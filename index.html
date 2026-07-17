@@ -295,6 +295,8 @@
         <img id="uploadPreview" style="display:none">
       </label>
       <input id="pImage" type="file" accept="image/*" style="display:none" onchange="handleImage(event)">
+      <div id="uploadWarning" style="display:none;color:#c0392b;font-size:13px;margin-top:6px"></div>
+      <div style="color:var(--muted);font-size:12px;margin-top:6px">תמונות גדולות מ-4MB יידחסו אוטומטית</div>
     </div>
     <div class="field">
       <label>אייקון</label>
@@ -477,10 +479,67 @@ function scrollToFeedAndOpenModal(){
 
 let selectedImageFile = null;
 
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4MB, safely under Vercel's 4.5MB function body limit
+const MAX_IMAGE_DIMENSION = 1600; // px, longest side
+
+function fileToImage(file){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function compressImage(file, quality){
+  const img = await fileToImage(file);
+  const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(img.width, img.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  URL.revokeObjectURL(img.src);
+  return new Promise(resolve=>{
+    canvas.toBlob(blob=>resolve(blob), 'image/jpeg', quality);
+  });
+}
+
+async function autoReduceImageQuality(file){
+  // Skip non-raster files (canvas re-encode only works on images)
+  if(!file.type.startsWith('image/')) return file;
+  let quality = 0.85;
+  let blob = await compressImage(file, quality);
+  while(blob && blob.size > MAX_UPLOAD_BYTES && quality > 0.3){
+    quality -= 0.15;
+    blob = await compressImage(file, quality);
+  }
+  if(!blob || blob.size > MAX_UPLOAD_BYTES) return file; // give up, let size warning handle it
+  return new File([blob], (file.name || 'upload').replace(/\.\w+$/, '') + '.jpg', { type:'image/jpeg' });
+}
+
 function handleImage(e){
   const file = e.target.files[0];
   if(!file) return;
-  selectedImageFile = file;
+  handleImageAsync(file);
+}
+
+async function handleImageAsync(file){
+  const warningEl = document.getElementById('uploadWarning');
+  warningEl.style.display = 'none';
+
+  let finalFile = file;
+  if(file.size > MAX_UPLOAD_BYTES){
+    finalFile = await autoReduceImageQuality(file);
+  }
+
+  if(finalFile.size > MAX_UPLOAD_BYTES){
+    warningEl.textContent = `⚠️ התמונה גדולה מדי (מקסימום 4MB) גם לאחר דחיסה. נסו תמונה אחרת.`;
+    warningEl.style.display = 'block';
+    return;
+  }
+
+  selectedImageFile = finalFile;
   const reader = new FileReader();
   reader.onload = ()=>{
     selectedImage = reader.result;
@@ -489,7 +548,7 @@ function handleImage(e){
     preview.src = selectedImage;
     preview.style.display='block';
   };
-  reader.readAsDataURL(file);
+  reader.readAsDataURL(finalFile);
 }
 
 function resetImagePicker(){
@@ -497,6 +556,7 @@ function resetImagePicker(){
   selectedImageFile = null;
   document.getElementById('pImage').value = '';
   document.getElementById('uploadHint').style.display='block';
+  document.getElementById('uploadWarning').style.display='none';
   const preview = document.getElementById('uploadPreview');
   preview.src=''; preview.style.display='none';
 }
