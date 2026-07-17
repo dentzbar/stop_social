@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STOP · שתפו מקומות שביקרתם בהם</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIj4KICA8Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjI0MCIgZmlsbD0iIzM5YzQ2ZSIgLz4KCiAgPHBhdGggZD0iTSAxMjAgMTIwIEwgMzkyIDEyMCBRIDQwMCAxMjAgNDAwIDEyOCBMIDQwMCAxODIgUSA0MDAgMTkwIDM5MiAxOTAgTCAyOTAgMTkwIFEgMjgyIDE5MCAyODIgMTk4IEwgMjgyIDM5MiBRIDI4MiA0MDAgMjc0IDQwMCBMIDIzOCA0MDAgUSAyMzAgNDAwIDIzMCAzOTIgTCAyMzAgMTk4IFEgMjMwIDE5MCAyMjIgMTkwIEwgMTIwIDE5MCBRIDExMiAxOTAgMTEyIDE4MiBMIDExMiAxMjggUSAxMTIgMTIwIDEyMCAxMjAgWiIgCiAgICAgICAgZmlsbD0iI0ZGRkZGRiIgLz4KPC9zdmc+Cg==">
+<style>
+  :root{
+    --green:#39c46e;
+    --green-dark:#22a35a;
+    --green-light:#98FB98;
+    --bg:#f2f5f3;
+    --card:#ffffff;
+    --ink:#12211a;
+    --muted:#6b7c73;
+    --line:#e3e9e5;
+    --shadow:0 6px 22px rgba(30,80,50,.08);
+    --radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Rubik','Segoe UI',Tahoma,sans-serif;
+    background:var(--bg);color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+  img{max-width:100%;display:block}
+
+  /* ===== Splash intro ===== */
+  .splash{
+    position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;
+    background:radial-gradient(circle at 50% 45%, #eafaf0 0%, var(--bg) 70%);
+    opacity:1;transition:opacity .7s ease;
+  }
+  .splash.fade-out{opacity:0;pointer-events:none}
+  .splash .mark{
+    width:160px;height:160px;
+    transform:scale(.4);opacity:0;
+    animation:splash-grow .9s cubic-bezier(.22,.9,.35,1) forwards;
+  }
+  .splash .mark svg{width:100%;height:100%;display:block}
+  @keyframes splash-grow{
+    0%{transform:scale(.4);opacity:0}
+    35%{opacity:1}
+    100%{transform:scale(9);opacity:1}
+  }
+  body.splash-active{overflow:hidden;height:100vh}
+
+  /* ===== Header (app) ===== */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:var(--card);
+    border-bottom:1px solid var(--line);
+    box-shadow:0 2px 10px rgba(0,0,0,.03);
+  }
+  .bar{
+    max-width:1180px;margin:0 auto;padding:12px 20px;
+    display:flex;align-items:center;gap:18px;
+  }
+  .logo{display:flex;align-items:center;gap:10px;cursor:pointer}
+  .logo .mark-sm{
+    width:44px;height:44px;border-radius:12px;overflow:hidden;
+    box-shadow:0 4px 12px rgba(57,196,110,.35);flex:none;
+  }
+  .logo .mark-sm svg{width:100%;height:100%}
+  .logo .name{font-size:26px;font-weight:800;letter-spacing:1px;color:var(--green-dark)}
+  .logo .name small{font-size:12px;font-weight:500;color:var(--muted);display:block;letter-spacing:0}
+
+  .search{
+    flex:1;max-width:560px;position:relative;
+  }
+  .search input{
+    width:100%;padding:12px 44px 12px 16px;border-radius:30px;
+    border:1.5px solid var(--line);background:#f7faf8;font-size:15px;
+    font-family:inherit;transition:.2s;
+  }
+  .search input:focus{outline:none;border-color:var(--green);background:#fff;box-shadow:0 0 0 4px rgba(57,196,110,.12)}
+  .search .icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:18px}
+
+  .actions{display:flex;align-items:center;gap:10px;margin-inline-start:auto}
+  .btn-sm{padding:10px 20px;font-size:15px}
+  .avatar{
+    width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#39c46e,#22a35a);
+    color:#fff;display:grid;place-items:center;font-weight:700;font-size:16px;cursor:pointer;flex:none;
+  }
+
+  /* ===== Layout ===== */
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 20px;display:grid;grid-template-columns:220px 1fr;gap:22px}
+
+  /* Sidebar */
+  aside{position:sticky;top:88px;align-self:start}
+  .cats{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:10px}
+  .cats h3{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 12px}
+  .cat{
+    display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;
+    cursor:pointer;font-size:15px;font-weight:500;transition:.12s;
+  }
+  .cat:hover{background:#f0f7f2}
+  .cat.active{background:var(--green);color:#fff}
+  .cat .emoji{font-size:19px}
+
+  /* Feed */
+  .feed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+  .feed-head h2{font-size:22px;font-weight:800}
+  .feed-head .sub{color:var(--muted);font-size:14px;margin-top:2px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{
+    padding:7px 15px;border-radius:20px;background:var(--card);border:1.5px solid var(--line);
+    font-size:14px;cursor:pointer;font-weight:500;transition:.12s;
+  }
+  .chip:hover{border-color:var(--green)}
+  .chip.active{background:var(--green);color:#fff;border-color:var(--green)}
+
+  /* Grid of place squares */
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;
+  }
+  .ad{
+    background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);
+    cursor:pointer;transition:.18s;display:flex;flex-direction:column;
+  }
+  .ad:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(30,80,50,.15)}
+  .ad .cover{
+    height:150px;display:grid;place-items:center;font-size:56px;position:relative;
+  }
+  .ad .price{
+    position:absolute;bottom:10px;inset-inline-start:10px;
+    background:rgba(255,255,255,.95);color:var(--green-dark);font-weight:800;font-size:15px;
+    padding:5px 12px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.1);
+  }
+  .ad .tag{
+    position:absolute;top:10px;inset-inline-end:10px;background:rgba(18,33,26,.75);color:#fff;
+    font-size:11px;padding:4px 10px;border-radius:20px;font-weight:600;
+  }
+  .ad .body{padding:14px;flex:1;display:flex;flex-direction:column;gap:6px}
+  .ad .body h4{font-size:16px;font-weight:700;line-height:1.3}
+  .ad .body p{font-size:13px;color:var(--muted);line-height:1.5;flex:1}
+  .ad .meta{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
+  .ad .meta .loc{display:flex;align-items:center;gap:4px}
+  .ad .meta .likes{display:flex;align-items:center;gap:4px}
+
+  .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)}
+  .empty .big{font-size:52px;margin-bottom:10px}
+
+  /* ===== Modal (new post) ===== */
+  .overlay{
+    position:fixed;inset:0;background:rgba(18,33,26,.5);z-index:100;
+    display:none;align-items:center;justify-content:center;padding:20px;
+  }
+  .overlay.show{display:flex}
+  .modal{
+    background:var(--card);border-radius:22px;width:100%;max-width:480px;
+    padding:26px;box-shadow:0 30px 60px rgba(0,0,0,.3);
+    max-height:90vh;overflow:auto;
+  }
+  .modal h2{font-size:20px;margin-bottom:4px}
+  .modal .hint{color:var(--muted);font-size:14px;margin-bottom:18px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:14px;font-weight:600;margin-bottom:6px}
+  .field input,.field textarea,.field select{
+    width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:12px;
+    font-family:inherit;font-size:15px;background:#f7faf8;
+  }
+  .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--green);background:#fff}
+  .field textarea{resize:vertical;min-height:70px}
+  .upload-box{
+    display:flex;align-items:center;justify-content:center;
+    border:1.5px dashed var(--line);border-radius:12px;background:#f7faf8;
+    height:130px;cursor:pointer;overflow:hidden;transition:.15s;color:var(--muted);font-size:14px;
+  }
+  .upload-box:hover{border-color:var(--green);background:#eafaf0}
+  .upload-box img{width:100%;height:100%;object-fit:cover}
+  .emoji-pick{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .emoji-pick span{
+    font-size:24px;padding:6px;border-radius:10px;cursor:pointer;border:2px solid transparent;
+  }
+  .emoji-pick span.sel{border-color:var(--green);background:#eafaf0}
+  .modal-actions{display:flex;gap:10px;margin-top:8px}
+  .btn-ghost-modal{background:#eef2ef;color:var(--ink)}
+  .btn-ghost-modal:hover{background:#e0e8e3}
+
+  footer{text-align:center;color:var(--muted);font-size:13px;padding:30px}
+
+  @media(max-width:860px){
+    .hero h1{font-size:38px}
+    .hero .mark{width:110px;height:110px}
+    .wrap{grid-template-columns:1fr}
+    aside{position:static}
+    .cats{display:flex;overflow-x:auto;gap:6px}
+    .cats h3{display:none}
+    .cat{white-space:nowrap}
+    .search{max-width:none}
+    .logo .name small{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Splash intro ===== -->
+<div class="splash" id="splash">
+  <div class="mark">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+      <circle cx="256" cy="256" r="240" fill="#39c46e"/>
+      <path d="M 120 120 L 392 120 Q 400 120 400 128 L 400 182 Q 400 190 392 190 L 290 190 Q 282 190 282 198 L 282 392 Q 282 400 274 400 L 238 400 Q 230 400 230 392 L 230 198 Q 230 190 222 190 L 120 190 Q 112 190 112 182 L 112 128 Q 112 120 120 120 Z" fill="#FFFFFF"/>
+    </svg>
+  </div>
+</div>
+
+<header>
+  <div class="bar">
+    <div class="logo" onclick="resetFeed()">
+      <div class="mark-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+          <circle cx="256" cy="256" r="240" fill="#39c46e"/>
+          <path d="M 120 120 L 392 120 Q 400 120 400 128 L 400 182 Q 400 190 392 190 L 290 190 Q 282 190 282 198 L 282 392 Q 282 400 274 400 L 238 400 Q 230 400 230 392 L 230 198 Q 230 190 222 190 L 120 190 Q 112 190 112 182 L 112 128 Q 112 120 120 120 Z" fill="#FFFFFF"/>
+        </svg>
+      </div>
+      <div class="name">STOP<small>הרשת המקומית שלך</small></div>
+    </div>
+
+    <div class="search">
+      <input id="searchInput" type="text" placeholder="חיפוש מקומות, ערים, סוגי מקום…" oninput="render()">
+      <span class="icon">🔍</span>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary btn-sm" onclick="openModal()">＋ שתף מקום</button>
+      <div class="avatar">ד</div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- Sidebar categories -->
+  <aside>
+    <div class="cats" id="cats">
+      <h3>סוגי מקומות</h3>
+    </div>
+  </aside>
+
+  <!-- Feed -->
+  <main>
+    <div class="feed-head">
+      <div>
+        <h2 id="feedTitle">כל המקומות</h2>
+        <div class="sub" id="feedSub">מקומות שכדאי לבקר בהם</div>
+      </div>
+      <div class="chips" id="sortChips">
+        <div class="chip active" onclick="setSort('new',this)">🆕 חדשים</div>
+        <div class="chip" onclick="setSort('hot',this)">🔥 פופולריים</div>
+        <div class="chip" onclick="setSort('near',this)">📍 קרובים</div>
+      </div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </main>
+</div>
+
+<footer>STOP · שתפו מקומות שביקרתם בהם 💚 · נבנה על ידי Claude עבור דניאל</footer>
+
+<!-- New post modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2>שיתוף מקום חדש 📍</h2>
+    <div class="hint">ביקרת במקום מגניב? שתף אותו עם השכונה!</div>
+    <div class="field">
+      <label>שם המקום</label>
+      <input id="pTitle" type="text" placeholder="לדוגמה: פארק הירקון">
+    </div>
+    <div class="field">
+      <label>למה כדאי לבקר?</label>
+      <textarea id="pDesc" placeholder="ספר לנו על החוויה שלך…"></textarea>
+    </div>
+    <div class="field">
+      <label>סוג מקום</label>
+      <select id="pCat"></select>
+    </div>
+    <div class="field" style="display:flex;gap:12px">
+      <div style="flex:1"><label>דירוג</label>
+        <select id="pPrice">
+          <option>⭐⭐⭐⭐⭐</option>
+          <option>⭐⭐⭐⭐</option>
+          <option>⭐⭐⭐</option>
+          <option>⭐⭐</option>
+        </select>
+      </div>
+      <div style="flex:1"><label>מיקום</label><input id="pLoc" type="text" placeholder="תל אביב"></div>
+    </div>
+    <div class="field">
+      <label>תמונה (אופציונלי)</label>
+      <label class="upload-box" id="uploadBox" for="pImage">
+        <span id="uploadHint">📷 לחצו כדי לבחור תמונה</span>
+        <img id="uploadPreview" style="display:none">
+      </label>
+      <input id="pImage" type="file" accept="image/*" style="display:none" onchange="handleImage(event)">
+    </div>
+    <div class="field">
+      <label>אייקון</label>
+      <div class="emoji-pick" id="emojiPick"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" style="flex:1" onclick="submitPost()">שתף 🚀</button>
+      <button class="btn btn-ghost-modal" onclick="closeModal()">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Data ===== */
+const CATEGORIES = [
+  {id:'all',        name:'הכל',          emoji:'🌐'},
+  {id:'restaurant', name:'מסעדות',       emoji:'🍽️'},
+  {id:'cafe',       name:'בתי קפה',      emoji:'☕'},
+  {id:'nature',     name:'טבע ופארקים',  emoji:'🌳'},
+  {id:'attraction', name:'אטרקציות',     emoji:'🎡'},
+  {id:'culture',    name:'תרבות ומוזיאונים', emoji:'🖼️'},
+  {id:'beach',      name:'חופים',        emoji:'🏖️'},
+  {id:'shopping',   name:'קניות',        emoji:'🛍️'},
+  {id:'nightlife',  name:'חיי לילה',     emoji:'🌃'},
+  {id:'hiking',     name:'טיולים',       emoji:'🥾'},
+];
+
+const COVER_COLORS = ['#eafaf0','#fff4e0','#e6f0ff','#ffe9ef','#f0e9ff','#e9fbf7','#fff9db','#f3f0e8'];
+
+const EMOJIS = ['🍽️','☕','🌳','🎡','🖼️','🏖️','🛍️','🌃','🥾','🍦','🍜','🎭','⛰️','🌅','🎪','🍷','🏛️','🚴','🛶','🎢'];
+
+let POSTS = [];
+
+async function fetchPosts(){
+  try{
+    const res = await fetch('/api/posts');
+    if(!res.ok) throw new Error('failed to load posts');
+    POSTS = await res.json();
+  }catch(e){
+    console.warn('נכשלה טעינת מקומות', e);
+    POSTS = [];
+  }
+}
+
+/* ===== State ===== */
+let activeCat = 'all';
+let sortMode = 'new';
+let selectedEmoji = EMOJIS[0];
+let selectedImage = null;
+
+/* ===== Init ===== */
+function buildCats(){
+  const el = document.getElementById('cats');
+  el.innerHTML = '<h3>סוגי מקומות</h3>';
+  CATEGORIES.forEach(c=>{
+    const d = document.createElement('div');
+    d.className = 'cat' + (c.id===activeCat?' active':'');
+    d.innerHTML = `<span class="emoji">${c.emoji}</span> ${c.name}`;
+    d.onclick = ()=>{ activeCat=c.id; buildCats(); render(); };
+    el.appendChild(d);
+  });
+  // category select in modal
+  const sel = document.getElementById('pCat');
+  sel.innerHTML = '';
+  CATEGORIES.filter(c=>c.id!=='all').forEach(c=>{
+    const o=document.createElement('option');o.value=c.id;o.textContent=`${c.emoji} ${c.name}`;sel.appendChild(o);
+  });
+}
+
+function buildEmojiPicker(){
+  const el = document.getElementById('emojiPick');
+  el.innerHTML='';
+  EMOJIS.forEach(e=>{
+    const s=document.createElement('span');
+    s.textContent=e;
+    if(e===selectedEmoji)s.className='sel';
+    s.onclick=()=>{selectedEmoji=e;buildEmojiPicker();};
+    el.appendChild(s);
+  });
+}
+
+function catName(id){ const c=CATEGORIES.find(x=>x.id===id); return c?c.name:id; }
+function ageText(createdAt){
+  const h = Math.max(1, Math.round((Date.now() - new Date(createdAt).getTime()) / 3600000));
+  return h<=1 ? 'לפני שעה' : (h<24 ? `לפני ${h} שעות` : `לפני ${Math.round(h/24)} ימים`);
+}
+
+/* ===== Render feed ===== */
+function render(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  let list = POSTS.slice();
+
+  if(activeCat!=='all') list = list.filter(p=>p.category===activeCat);
+  if(q) list = list.filter(p=>
+    p.title.toLowerCase().includes(q) ||
+    p.description.toLowerCase().includes(q) ||
+    p.location.toLowerCase().includes(q) ||
+    catName(p.category).toLowerCase().includes(q)
+  );
+
+  if(sortMode==='hot') list.sort((a,b)=>b.likes-a.likes);
+  else if(sortMode==='new') list.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  else if(sortMode==='near') list.sort((a,b)=>a.location.localeCompare(b.location,'he'));
+
+  // header
+  const cat = CATEGORIES.find(c=>c.id===activeCat);
+  document.getElementById('feedTitle').textContent = activeCat==='all' ? 'כל המקומות' : `${cat.emoji} ${cat.name}`;
+  document.getElementById('feedSub').textContent = q ? `תוצאות חיפוש עבור "${q}" · ${list.length} מקומות` : `${list.length} מקומות באזור שלך`;
+
+  const grid = document.getElementById('grid');
+  grid.innerHTML='';
+  if(list.length===0){
+    grid.innerHTML = `<div class="empty"><div class="big">🔍</div><b>לא נמצאו מקומות</b><br>נסה חיפוש אחר או שתף מקום חדש!</div>`;
+    return;
+  }
+  list.forEach(p=>{
+    const card = document.createElement('div');
+    card.className='ad';
+    card.onclick = ()=>likePost(p, card);
+    const coverContent = p.image_url
+      ? `<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover">`
+      : p.emoji;
+    card.innerHTML = `
+      <div class="cover" style="background:${p.color}">
+        ${coverContent}
+        <span class="tag">${catName(p.category)}</span>
+        <span class="price">${p.price}</span>
+      </div>
+      <div class="body">
+        <h4>${escapeHtml(p.title)}</h4>
+        <p>${escapeHtml(p.description)}</p>
+        <div class="meta">
+          <span class="loc">📍 ${escapeHtml(p.location)} · ${ageText(p.created_at)}</span>
+          <span class="likes">❤️ ${p.likes}</span>
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+async function likePost(p, card){
+  const el = card.querySelector('.likes');
+  try{
+    const res = await fetch(`/api/posts/${p.id}/like`, { method:'POST' });
+    if(!res.ok) throw new Error('like failed');
+    const updated = await res.json();
+    p.likes = updated.likes;
+  }catch(e){
+    console.warn('נכשל עדכון לייק', e);
+    p.likes++;
+  }
+  el.textContent = `❤️ ${p.likes}`;
+  el.style.transition='transform .15s'; el.style.transform='scale(1.3)';
+  setTimeout(()=>el.style.transform='scale(1)',150);
+}
+
+function setSort(mode, el){
+  sortMode=mode;
+  document.querySelectorAll('#sortChips .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function resetFeed(){
+  activeCat='all'; sortMode='new';
+  document.getElementById('searchInput').value='';
+  document.querySelectorAll('#sortChips .chip').forEach((c,i)=>c.classList.toggle('active',i===0));
+  buildCats(); render();
+}
+
+/* ===== Modal ===== */
+function openModal(){ document.getElementById('overlay').classList.add('show'); }
+function closeModal(){ document.getElementById('overlay').classList.remove('show'); resetImagePicker(); }
+document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
+
+function scrollToFeedAndOpenModal(){
+  document.getElementById('feed').scrollIntoView({behavior:'smooth'});
+  setTimeout(openModal, 400);
+}
+
+let selectedImageFile = null;
+
+function handleImage(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  selectedImageFile = file;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    selectedImage = reader.result;
+    document.getElementById('uploadHint').style.display='none';
+    const preview = document.getElementById('uploadPreview');
+    preview.src = selectedImage;
+    preview.style.display='block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetImagePicker(){
+  selectedImage = null;
+  selectedImageFile = null;
+  document.getElementById('pImage').value = '';
+  document.getElementById('uploadHint').style.display='block';
+  const preview = document.getElementById('uploadPreview');
+  preview.src=''; preview.style.display='none';
+}
+
+async function uploadSelectedImage(){
+  if(!selectedImageFile) return null;
+  const res = await fetch('/api/upload', {
+    method:'POST',
+    headers:{
+      'Content-Type': selectedImageFile.type || 'application/octet-stream',
+      'X-Filename': selectedImageFile.name || 'upload',
+    },
+    body: selectedImageFile,
+  });
+  if(!res.ok) throw new Error('image upload failed');
+  const { url } = await res.json();
+  return url;
+}
+
+async function submitPost(){
+  const title = document.getElementById('pTitle').value.trim();
+  if(!title){ alert('צריך כותרת לפרסום 😊'); return; }
+  const description = document.getElementById('pDesc').value.trim() || 'ללא תיאור';
+  const category = document.getElementById('pCat').value;
+  const price = document.getElementById('pPrice').value;
+  const location = document.getElementById('pLoc').value.trim() || 'לא צוין';
+  const color = COVER_COLORS[Math.floor(Math.random()*COVER_COLORS.length)];
+
+  try{
+    const image_url = await uploadSelectedImage();
+    const res = await fetch('/api/posts', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({title,description,category,price,location,emoji:selectedEmoji,color,image_url}),
+    });
+    if(!res.ok) throw new Error('post creation failed');
+    const post = await res.json();
+    POSTS.unshift(post);
+  }catch(e){
+    console.warn('נכשל פרסום המקום', e);
+    alert('משהו השתבש בשמירת המקום, נסו שוב 🙏');
+    return;
+  }
+
+  closeModal();
+  // reset form
+  ['pTitle','pDesc','pLoc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pPrice').selectedIndex = 0;
+  selectedEmoji=EMOJIS[0]; buildEmojiPicker();
+  resetImagePicker();
+  activeCat='all'; buildCats();
+  render();
+}
+
+function escapeHtml(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ===== Boot ===== */
+(async function init(){
+  buildCats();
+  buildEmojiPicker();
+  await fetchPosts();
+  render();
+})();
+
+/* ===== Splash intro timing ===== */
+document.body.classList.add('splash-active');
+setTimeout(()=>{
+  const splash = document.getElementById('splash');
+  splash.classList.add('fade-out');
+  document.body.classList.remove('splash-active');
+  setTimeout(()=>splash.remove(), 750);
+}, 950);
+</script>
+</body>
+</html>
