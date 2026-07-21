@@ -2,8 +2,12 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#39c46e">
 <title>STOP · שתפו מקומות שביקרתם בהם</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIj4KICA8Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjI0MCIgZmlsbD0iIzM5YzQ2ZSIgLz4KCiAgPHBhdGggZD0iTSAxMjAgMTIwIEwgMzkyIDEyMCBRIDQwMCAxMjAgNDAwIDEyOCBMIDQwMCAxODIgUSA0MDAgMTkwIDM5MiAxOTAgTCAyOTAgMTkwIFEgMjgyIDE5MCAyODIgMTk4IEwgMjgyIDM5MiBRIDI4MiA0MDAgMjc0IDQwMCBMIDIzOCA0MDAgUSAyMzAgNDAwIDIzMCAzOTIgTCAyMzAgMTk4IFEgMjMwIDE5MCAyMjIgMTkwIEwgMTIwIDE5MCBRIDExMiAxOTAgMTEyIDE4MiBMIDExMiAxMjggUSAxMTIgMTIwIDEyMCAxMjAgWiIgCiAgICAgICAgZmlsbD0iI0ZGRkZGRiIgLz4KPC9zdmc+Cg==">
 <style>
   :root{
@@ -27,6 +31,17 @@
   }
   a{color:inherit;text-decoration:none}
   img{max-width:100%;display:block}
+
+  /* ===== Buttons ===== */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    border:none;border-radius:26px;font-family:inherit;font-weight:700;
+    cursor:pointer;transition:.15s;white-space:nowrap;line-height:1;
+    padding:12px 22px;font-size:15px;
+  }
+  .btn:active{transform:scale(.97)}
+  .btn-primary{background:var(--green);color:#fff;box-shadow:0 4px 14px rgba(57,196,110,.35)}
+  .btn-primary:hover{background:var(--green-dark)}
 
   /* ===== Splash intro ===== */
   .splash{
@@ -89,6 +104,8 @@
 
   /* ===== Layout ===== */
   .wrap{max-width:1180px;margin:0 auto;padding:22px 20px;display:grid;grid-template-columns:220px 1fr;gap:22px}
+  /* allow grid tracks to shrink below intrinsic content width (prevents horizontal overflow) */
+  .wrap > aside,.wrap > main{min-width:0}
 
   /* Sidebar */
   aside{position:sticky;top:88px;align-self:start}
@@ -139,8 +156,19 @@
   .ad .body h4{font-size:16px;font-weight:700;line-height:1.3}
   .ad .body p{font-size:13px;color:var(--muted);line-height:1.5;flex:1}
   .ad .meta{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
-  .ad .meta .loc{display:flex;align-items:center;gap:4px}
-  .ad .meta .likes{display:flex;align-items:center;gap:4px}
+  .ad .meta .loc{display:flex;align-items:center;gap:4px;min-width:0}
+  .ad .meta .loc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .reactions{display:flex;align-items:center;gap:6px;flex:none}
+  .like-btn{
+    display:inline-flex;align-items:center;gap:4px;flex:none;
+    border:1.5px solid var(--line);background:#fff;color:var(--muted);
+    border-radius:20px;padding:5px 10px;font-size:13px;font-weight:600;
+    font-family:inherit;cursor:pointer;transition:.15s;line-height:1;
+  }
+  .like-btn .emoji{font-size:15px}
+  .like-btn:hover{border-color:var(--green);color:var(--green-dark)}
+  .like-btn:active{transform:scale(.9)}
+  .like-btn.reacted{background:#eafaf0;border-color:var(--green);color:var(--green-dark)}
 
   .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)}
   .empty .big{font-size:52px;margin-bottom:10px}
@@ -181,19 +209,123 @@
   .modal-actions{display:flex;gap:10px;margin-top:8px}
   .btn-ghost-modal{background:#eef2ef;color:var(--ink)}
   .btn-ghost-modal:hover{background:#e0e8e3}
+  .req{color:#e0335f}
+
+  /* ===== Post detail modal ===== */
+  .post-modal{padding:0;overflow:hidden;display:flex;flex-direction:column}
+  .modal-close{
+    position:absolute;top:12px;inset-inline-start:12px;z-index:2;
+    width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;
+    background:rgba(255,255,255,.9);color:var(--ink);font-size:16px;font-weight:700;
+    display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.15);
+  }
+  .post-cover{height:170px;display:grid;place-items:center;font-size:72px;flex:none}
+  .post-cover img{width:100%;height:100%;object-fit:cover}
+  .post-detail{padding:18px 22px 8px}
+  .post-tags{display:flex;gap:8px;margin-bottom:8px}
+  .post-cat{background:var(--green);color:#fff;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px}
+  .post-price{background:#f0f7f2;color:var(--green-dark);font-size:13px;font-weight:800;padding:4px 12px;border-radius:20px}
+  .post-modal h2{font-size:22px;margin-bottom:4px}
+  .post-byline{color:var(--muted);font-size:13px;margin-bottom:10px}
+  .post-byline b{color:var(--ink)}
+  .post-desc{font-size:15px;line-height:1.6;color:#2a3b32}
+  .post-meta{color:var(--muted);font-size:13px;margin-top:10px}
+
+  .comments{border-top:1px solid var(--line);padding:16px 22px 20px;overflow:auto;flex:1}
+  .comments h3{font-size:16px;margin-bottom:12px}
+  .comment-list{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
+  .comment{background:#f7faf8;border-radius:14px;padding:10px 14px}
+  .comment .c-head{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+  .comment .c-author{font-weight:700;font-size:14px}
+  .comment .c-time{color:var(--muted);font-size:12px}
+  .comment .c-body{font-size:14px;line-height:1.5;color:#2a3b32;word-break:break-word}
+  .comments-empty{color:var(--muted);font-size:14px;text-align:center;padding:12px}
+  .comment-form{display:flex;flex-direction:column;gap:8px}
+  .comment-form input{
+    width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:12px;
+    font-family:inherit;font-size:15px;background:#f7faf8;
+  }
+  .comment-form input:focus{outline:none;border-color:var(--green);background:#fff}
+  .comment-row{display:flex;gap:8px}
+  .comment-row input{flex:1}
 
   footer{text-align:center;color:var(--muted);font-size:13px;padding:30px}
 
+  /* Floating action button (mobile only) */
+  .fab{
+    display:none;position:fixed;z-index:60;
+    inset-inline-end:18px;bottom:calc(18px + env(safe-area-inset-bottom));
+    width:58px;height:58px;border-radius:50%;border:none;cursor:pointer;
+    background:var(--green);color:#fff;font-size:30px;line-height:1;
+    box-shadow:0 8px 24px rgba(57,196,110,.5);
+  }
+  .fab:active{transform:scale(.92)}
+
+  /* ===== Tablet ===== */
   @media(max-width:860px){
-    .hero h1{font-size:38px}
-    .hero .mark{width:110px;height:110px}
-    .wrap{grid-template-columns:1fr}
+    .wrap{grid-template-columns:1fr;padding:16px}
     aside{position:static}
-    .cats{display:flex;overflow-x:auto;gap:6px}
+    .cats{display:flex;overflow-x:auto;gap:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .cats::-webkit-scrollbar{display:none}
     .cats h3{display:none}
     .cat{white-space:nowrap}
     .search{max-width:none}
     .logo .name small{display:none}
+  }
+
+  /* ===== Phone ===== */
+  @media(max-width:640px){
+    .bar{
+      padding:10px 14px;gap:10px;flex-wrap:wrap;
+    }
+    .logo{order:1}
+    .logo .mark-sm{width:38px;height:38px}
+    .logo .name{font-size:22px}
+    /* hide the header share button — replaced by the FAB */
+    .actions .btn{display:none}
+    .actions{order:2;margin-inline-start:auto;gap:8px}
+    .avatar{width:38px;height:38px;font-size:15px}
+    .search{order:3;flex-basis:100%;max-width:none}
+    .search input{padding:11px 42px 11px 14px}
+
+    .wrap{padding:14px 12px 90px}
+    .feed-head h2{font-size:19px}
+    .feed-head .sub{font-size:13px}
+    .chips{width:100%;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+    .chips::-webkit-scrollbar{display:none}
+    .chip{flex:none}
+
+    /* two columns on phones for a denser, app-like feel */
+    .grid{grid-template-columns:repeat(2,1fr);gap:12px}
+    .ad .cover{height:120px;font-size:44px}
+    .ad .body{padding:10px;gap:4px}
+    .ad .body h4{font-size:14px}
+    .ad .body p{font-size:12px;-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}
+    .ad .meta{flex-direction:column;align-items:stretch;gap:8px;font-size:11px}
+    .reactions{justify-content:space-between;gap:4px}
+    .like-btn{flex:1;justify-content:center;padding:6px 4px;font-size:12px;gap:2px}
+    .like-btn .emoji{font-size:14px}
+
+    .fab{display:grid;place-items:center}
+
+    /* full-screen modal on phones */
+    .overlay{padding:0;align-items:stretch}
+    .modal{
+      max-width:none;border-radius:0;width:100%;max-height:100vh;height:100%;
+      padding:22px 18px calc(22px + env(safe-area-inset-bottom));
+    }
+    /* post modal is full-screen but keeps its own internal padding */
+    .post-modal{padding:0}
+    .comments{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+    .field input,.field textarea,.field select,
+    .comment-form input{font-size:16px} /* prevents iOS zoom-on-focus */
+    .modal-actions{position:sticky;bottom:0;background:var(--card);padding-top:12px}
+  }
+
+  /* single column on very narrow phones */
+  @media(max-width:380px){
+    .grid{grid-template-columns:1fr}
+    .ad .cover{height:150px}
   }
 </style>
 </head>
@@ -260,13 +392,20 @@
 
 <footer>STOP · שתפו מקומות שביקרתם בהם 💚 · נבנה על ידי Claude עבור דניאל</footer>
 
+<!-- Floating share button (mobile) -->
+<button class="fab" type="button" aria-label="שתף מקום" onclick="openModal()">＋</button>
+
 <!-- New post modal -->
 <div class="overlay" id="overlay">
   <div class="modal">
     <h2>שיתוף מקום חדש 📍</h2>
     <div class="hint">ביקרת במקום מגניב? שתף אותו עם השכונה!</div>
     <div class="field">
-      <label>שם המקום</label>
+      <label>השם שלך <span class="req">*</span></label>
+      <input id="pAuthor" type="text" placeholder="איך קוראים לך?" maxlength="60">
+    </div>
+    <div class="field">
+      <label>שם המקום <span class="req">*</span></label>
       <input id="pTitle" type="text" placeholder="לדוגמה: פארק הירקון">
     </div>
     <div class="field">
@@ -309,6 +448,38 @@
   </div>
 </div>
 
+<!-- Post detail modal (with comments) -->
+<div class="overlay" id="postOverlay">
+  <div class="modal post-modal">
+    <button class="modal-close" type="button" aria-label="סגור" onclick="closePost()">✕</button>
+    <div class="post-cover" id="postCover"></div>
+    <div class="post-detail">
+      <div class="post-tags">
+        <span class="post-cat" id="postCat"></span>
+        <span class="post-price" id="postPrice"></span>
+      </div>
+      <h2 id="postTitle"></h2>
+      <div class="post-byline" id="postByline"></div>
+      <p class="post-desc" id="postDesc"></p>
+      <div class="post-meta" id="postMeta"></div>
+    </div>
+
+    <div class="comments">
+      <h3 id="commentsTitle">תגובות</h3>
+      <div class="comment-list" id="commentList"></div>
+      <div class="comment-form">
+        <input id="cAuthor" type="text" placeholder="השם שלך *" maxlength="60">
+        <div class="comment-row">
+          <input id="cBody" type="text" placeholder="כתבו תגובה…" maxlength="1000"
+                 onkeydown="if(event.key==='Enter')submitComment()">
+          <button class="btn btn-primary" type="button" onclick="submitComment()">שלח</button>
+        </div>
+        <div id="commentWarning" style="display:none;color:#c0392b;font-size:13px;margin-top:4px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ===== Data ===== */
 const CATEGORIES = [
@@ -327,6 +498,13 @@ const CATEGORIES = [
 const COVER_COLORS = ['#eafaf0','#fff4e0','#e6f0ff','#ffe9ef','#f0e9ff','#e9fbf7','#fff9db','#f3f0e8'];
 
 const EMOJIS = ['🍽️','☕','🌳','🎡','🖼️','🏖️','🛍️','🌃','🥾','🍦','🍜','🎭','⛰️','🌅','🎪','🍷','🏛️','🚴','🛶','🎢'];
+
+// Reaction types — order defines display order in each card
+const REACTIONS = [
+  {type:'heart',   emoji:'❤️', field:'reactions_heart',   label:'אהבתי'},
+  {type:'thumb',   emoji:'👍', field:'reactions_thumb',   label:'לייק'},
+  {type:'hundred', emoji:'💯', field:'reactions_hundred', label:'מאה אחוז'},
+];
 
 let POSTS = [];
 
@@ -379,6 +557,7 @@ function buildEmojiPicker(){
 }
 
 function catName(id){ const c=CATEGORIES.find(x=>x.id===id); return c?c.name:id; }
+function totalReactions(p){ return REACTIONS.reduce((sum,r)=>sum+(p[r.field]||0),0); }
 function ageText(createdAt){
   const h = Math.max(1, Math.round((Date.now() - new Date(createdAt).getTime()) / 3600000));
   return h<=1 ? 'לפני שעה' : (h<24 ? `לפני ${h} שעות` : `לפני ${Math.round(h/24)} ימים`);
@@ -397,7 +576,7 @@ function render(){
     catName(p.category).toLowerCase().includes(q)
   );
 
-  if(sortMode==='hot') list.sort((a,b)=>b.likes-a.likes);
+  if(sortMode==='hot') list.sort((a,b)=>totalReactions(b)-totalReactions(a));
   else if(sortMode==='new') list.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
   else if(sortMode==='near') list.sort((a,b)=>a.location.localeCompare(b.location,'he'));
 
@@ -415,7 +594,6 @@ function render(){
   list.forEach(p=>{
     const card = document.createElement('div');
     card.className='ad';
-    card.onclick = ()=>likePost(p, card);
     const coverContent = p.image_url
       ? `<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover">`
       : p.emoji;
@@ -429,28 +607,141 @@ function render(){
         <h4>${escapeHtml(p.title)}</h4>
         <p>${escapeHtml(p.description)}</p>
         <div class="meta">
-          <span class="loc">📍 ${escapeHtml(p.location)} · ${ageText(p.created_at)}</span>
-          <span class="likes">❤️ ${p.likes}</span>
+          <span class="loc"><span>📍 ${escapeHtml(p.location)} · ${ageText(p.created_at)}</span></span>
+          <div class="reactions">
+            ${REACTIONS.map(r=>`
+              <button class="like-btn" type="button" data-type="${r.type}" aria-label="${r.label}">
+                <span class="emoji">${r.emoji}</span> <span class="react-count">${p[r.field]||0}</span>
+              </button>`).join('')}
+          </div>
         </div>
       </div>`;
+    card.addEventListener('click', ()=>openPost(p));
+    card.querySelectorAll('.like-btn').forEach(btn=>{
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        reactToPost(p, btn.dataset.type, this);
+      });
+    });
     grid.appendChild(card);
   });
 }
 
-async function likePost(p, card){
-  const el = card.querySelector('.likes');
+async function reactToPost(p, type, btn){
+  const reaction = REACTIONS.find(r=>r.type===type);
+  if(!reaction) return;
   try{
-    const res = await fetch(`/api/posts/${p.id}/like`, { method:'POST' });
-    if(!res.ok) throw new Error('like failed');
+    const res = await fetch(`/api/posts/${p.id}/like`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({type}),
+    });
+    if(!res.ok) throw new Error('reaction failed');
     const updated = await res.json();
-    p.likes = updated.likes;
+    REACTIONS.forEach(r=>{ if(updated[r.field]!=null) p[r.field]=updated[r.field]; });
   }catch(e){
-    console.warn('נכשל עדכון לייק', e);
-    p.likes++;
+    console.warn('נכשל עדכון תגובה', e);
+    p[reaction.field] = (p[reaction.field]||0) + 1;
   }
-  el.textContent = `❤️ ${p.likes}`;
-  el.style.transition='transform .15s'; el.style.transform='scale(1.3)';
-  setTimeout(()=>el.style.transform='scale(1)',150);
+  btn.querySelector('.react-count').textContent = p[reaction.field]||0;
+  btn.classList.add('reacted');
+  btn.style.transition='transform .15s'; btn.style.transform='scale(1.2)';
+  setTimeout(()=>btn.style.transform='scale(1)',150);
+}
+
+/* ===== Post detail + comments ===== */
+let currentPost = null;
+
+function openPost(p){
+  currentPost = p;
+  const cover = document.getElementById('postCover');
+  cover.style.background = p.color;
+  cover.innerHTML = p.image_url
+    ? `<img src="${p.image_url}">`
+    : p.emoji;
+  document.getElementById('postCat').textContent = catName(p.category);
+  document.getElementById('postPrice').textContent = p.price;
+  document.getElementById('postTitle').textContent = p.title;
+  document.getElementById('postByline').innerHTML = `שותף על ידי <b>${escapeHtml(p.author || 'אנונימי')}</b>`;
+  document.getElementById('postDesc').textContent = p.description;
+  document.getElementById('postMeta').textContent = `📍 ${p.location} · ${ageText(p.created_at)}`;
+
+  document.getElementById('commentList').innerHTML = '<div class="comments-empty">טוען תגובות…</div>';
+  document.getElementById('commentsTitle').textContent = 'תגובות';
+  document.getElementById('commentWarning').style.display = 'none';
+  document.getElementById('postOverlay').classList.add('show');
+  loadComments(p.id);
+}
+
+function closePost(){
+  document.getElementById('postOverlay').classList.remove('show');
+  currentPost = null;
+}
+document.getElementById('postOverlay').addEventListener('click',e=>{ if(e.target.id==='postOverlay') closePost(); });
+
+function commentTime(createdAt){
+  const m = Math.max(1, Math.round((Date.now() - new Date(createdAt).getTime())/60000));
+  if(m < 60) return `לפני ${m} דק׳`;
+  const h = Math.round(m/60);
+  if(h < 24) return `לפני ${h} שע׳`;
+  return `לפני ${Math.round(h/24)} ימים`;
+}
+
+function renderComments(comments){
+  const list = document.getElementById('commentList');
+  document.getElementById('commentsTitle').textContent = `תגובות · ${comments.length}`;
+  if(comments.length === 0){
+    list.innerHTML = '<div class="comments-empty">אין תגובות עדיין — היו הראשונים! 💬</div>';
+    return;
+  }
+  list.innerHTML = comments.map(c=>`
+    <div class="comment">
+      <div class="c-head">
+        <span class="c-author">${escapeHtml(c.author)}</span>
+        <span class="c-time">${commentTime(c.created_at)}</span>
+      </div>
+      <div class="c-body">${escapeHtml(c.body)}</div>
+    </div>`).join('');
+}
+
+async function loadComments(postId){
+  try{
+    const res = await fetch(`/api/posts/${postId}/comments`);
+    if(!res.ok) throw new Error('failed to load comments');
+    const comments = await res.json();
+    if(currentPost && currentPost.id === postId) renderComments(comments);
+  }catch(e){
+    console.warn('נכשלה טעינת תגובות', e);
+    document.getElementById('commentList').innerHTML =
+      '<div class="comments-empty">נכשלה טעינת התגובות 😕</div>';
+  }
+}
+
+async function submitComment(){
+  if(!currentPost) return;
+  const warn = document.getElementById('commentWarning');
+  const author = document.getElementById('cAuthor').value.trim();
+  const body = document.getElementById('cBody').value.trim();
+  warn.style.display = 'none';
+
+  if(!author){ warn.textContent='צריך שם כדי להגיב 😊'; warn.style.display='block'; return; }
+  if(!body){ warn.textContent='כתבו תגובה לפני השליחה'; warn.style.display='block'; return; }
+
+  const postId = currentPost.id;
+  try{
+    const res = await fetch(`/api/posts/${postId}/comments`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({author, body}),
+    });
+    if(!res.ok) throw new Error('comment failed');
+  }catch(e){
+    console.warn('נכשלה שליחת תגובה', e);
+    warn.textContent='משהו השתבש בשליחת התגובה, נסו שוב 🙏'; warn.style.display='block';
+    return;
+  }
+  document.getElementById('cBody').value = '';
+  loadComments(postId);
 }
 
 function setSort(mode, el){
@@ -577,6 +868,8 @@ async function uploadSelectedImage(){
 }
 
 async function submitPost(){
+  const author = document.getElementById('pAuthor').value.trim();
+  if(!author){ alert('צריך למלא את השם שלך 😊'); return; }
   const title = document.getElementById('pTitle').value.trim();
   if(!title){ alert('צריך כותרת לפרסום 😊'); return; }
   const description = document.getElementById('pDesc').value.trim() || 'ללא תיאור';
@@ -590,7 +883,7 @@ async function submitPost(){
     const res = await fetch('/api/posts', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({title,description,category,price,location,emoji:selectedEmoji,color,image_url}),
+      body: JSON.stringify({title,description,category,price,location,author,emoji:selectedEmoji,color,image_url}),
     });
     if(!res.ok) throw new Error('post creation failed');
     const post = await res.json();
@@ -602,7 +895,7 @@ async function submitPost(){
   }
 
   closeModal();
-  // reset form
+  // reset form (keep author name for convenience)
   ['pTitle','pDesc','pLoc'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('pPrice').selectedIndex = 0;
   selectedEmoji=EMOJIS[0]; buildEmojiPicker();

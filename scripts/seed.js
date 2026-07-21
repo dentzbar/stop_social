@@ -20,8 +20,8 @@ const SEED_POSTS = [
 async function seed() {
   for (const p of SEED_POSTS) {
     await sql`
-      insert into posts (title, description, category, price, location, emoji, color, likes)
-      values (${p.title}, ${p.desc}, ${p.cat}, ${p.price}, ${p.loc}, ${p.emoji}, ${p.color}, ${p.likes})
+      insert into posts (title, description, category, price, location, author, emoji, color, likes, reactions_heart)
+      values (${p.title}, ${p.desc}, ${p.cat}, ${p.price}, ${p.loc}, ${'צוות STOP'}, ${p.emoji}, ${p.color}, ${p.likes}, ${p.likes})
     `;
   }
   console.log(`Seeded ${SEED_POSTS.length} posts.`);
