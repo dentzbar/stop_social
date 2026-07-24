@@ -141,8 +141,9 @@
   }
   .ad:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(30,80,50,.15)}
   .ad .cover{
-    height:150px;display:grid;place-items:center;font-size:56px;position:relative;
+    height:150px;display:grid;place-items:center;font-size:56px;position:relative;overflow:hidden;
   }
+  .ad .cover img{width:100%;height:100%;object-fit:cover}
   .ad .price{
     position:absolute;bottom:10px;inset-inline-start:10px;
     background:rgba(255,255,255,.95);color:var(--green-dark);font-weight:800;font-size:15px;
@@ -219,8 +220,12 @@
     background:rgba(255,255,255,.9);color:var(--ink);font-size:16px;font-weight:700;
     display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.15);
   }
-  .post-cover{height:170px;display:grid;place-items:center;font-size:72px;flex:none}
-  .post-cover img{width:100%;height:100%;object-fit:cover}
+  .post-cover{position:relative;display:grid;place-items:center;font-size:72px;flex:none;overflow:hidden}
+  .post-cover.no-img{height:170px}
+  /* blurred fill so contained vertical/horizontal images have no empty bars */
+  .post-cover::before{content:"";position:absolute;inset:0;background:inherit;background-size:cover;background-position:center;filter:blur(22px) brightness(.85);transform:scale(1.1)}
+  /* cap height so the post bottom (text + reactions) always stays visible */
+  .post-cover img{position:relative;width:100%;max-height:min(45vh,320px);object-fit:contain;display:block}
   .post-detail{padding:18px 22px 8px}
   .post-tags{display:flex;gap:8px;margin-bottom:8px}
   .post-cat{background:var(--green);color:#fff;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px}
@@ -442,7 +447,7 @@
       <div class="emoji-pick" id="emojiPick"></div>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-primary" style="flex:1" onclick="submitPost()">שתף 🚀</button>
+      <button class="btn btn-primary" style="flex:1" onclick="submitPost(this)">שתף 🚀</button>
       <button class="btn btn-ghost-modal" onclick="closeModal()">ביטול</button>
     </div>
   </div>
@@ -566,7 +571,8 @@ function ageText(createdAt){
 /* ===== Render feed ===== */
 function render(){
   const q = document.getElementById('searchInput').value.trim().toLowerCase();
-  let list = POSTS.slice();
+  const seen = new Set();
+  let list = POSTS.filter(p=>{ if(seen.has(p.id)) return false; seen.add(p.id); return true; });
 
   if(activeCat!=='all') list = list.filter(p=>p.category===activeCat);
   if(q) list = list.filter(p=>
@@ -655,10 +661,16 @@ let currentPost = null;
 function openPost(p){
   currentPost = p;
   const cover = document.getElementById('postCover');
-  cover.style.background = p.color;
-  cover.innerHTML = p.image_url
-    ? `<img src="${p.image_url}">`
-    : p.emoji;
+  if(p.image_url){
+    cover.classList.remove('no-img');
+    // blurred fill behind a contained image so vertical/horizontal both look clean
+    cover.style.background = `${p.color} url("${p.image_url}") center/cover no-repeat`;
+    cover.innerHTML = `<img src="${p.image_url}">`;
+  } else {
+    cover.classList.add('no-img');
+    cover.style.background = p.color;
+    cover.innerHTML = p.emoji;
+  }
   document.getElementById('postCat').textContent = catName(p.category);
   document.getElementById('postPrice').textContent = p.price;
   document.getElementById('postTitle').textContent = p.title;
@@ -867,7 +879,9 @@ async function uploadSelectedImage(){
   return url;
 }
 
-async function submitPost(){
+let submitting = false;
+async function submitPost(btn){
+  if(submitting) return; // prevent double-submit → duplicate posts
   const author = document.getElementById('pAuthor').value.trim();
   if(!author){ alert('צריך למלא את השם שלך 😊'); return; }
   const title = document.getElementById('pTitle').value.trim();
@@ -878,6 +892,8 @@ async function submitPost(){
   const location = document.getElementById('pLoc').value.trim() || 'לא צוין';
   const color = COVER_COLORS[Math.floor(Math.random()*COVER_COLORS.length)];
 
+  submitting = true;
+  if(btn){ btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'משתף…'; }
   try{
     const image_url = await uploadSelectedImage();
     const res = await fetch('/api/posts', {
@@ -887,11 +903,14 @@ async function submitPost(){
     });
     if(!res.ok) throw new Error('post creation failed');
     const post = await res.json();
-    POSTS.unshift(post);
+    if(!POSTS.some(p=>p.id===post.id)) POSTS.unshift(post); // dedup by id
   }catch(e){
     console.warn('נכשל פרסום המקום', e);
     alert('משהו השתבש בשמירת המקום, נסו שוב 🙏');
     return;
+  }finally{
+    submitting = false;
+    if(btn){ btn.disabled = false; if(btn.dataset.label) btn.textContent = btn.dataset.label; }
   }
 
   closeModal();
