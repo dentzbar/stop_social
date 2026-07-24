@@ -169,6 +169,22 @@
   .like-btn .emoji{font-size:15px}
   .like-btn:hover{border-color:var(--green);color:var(--green-dark)}
   .like-btn:active{transform:scale(.9)}
+  .share-btn{
+    display:inline-flex;align-items:center;gap:6px;margin-top:14px;
+    border:none;background:var(--green);color:#fff;
+    border-radius:22px;padding:10px 18px;font-size:15px;font-weight:700;
+    font-family:inherit;cursor:pointer;transition:.15s;line-height:1;
+  }
+  .share-btn .emoji{font-size:17px}
+  .share-btn:hover{background:var(--green-dark)}
+  .share-btn:active{transform:scale(.95)}
+  #toast{
+    position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);
+    background:#1f2d26;color:#fff;padding:11px 18px;border-radius:24px;
+    font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.25);
+    opacity:0;pointer-events:none;transition:.25s;z-index:1000;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .like-btn.reacted{background:#eafaf0;border-color:var(--green);color:var(--green-dark)}
 
   .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)}
@@ -467,6 +483,9 @@
       <div class="post-byline" id="postByline"></div>
       <p class="post-desc" id="postDesc"></p>
       <div class="post-meta" id="postMeta"></div>
+      <button class="share-btn" type="button" onclick="sharePost(currentPost)">
+        <span class="emoji">🔗</span> שיתוף
+      </button>
     </div>
 
     <div class="comments">
@@ -522,6 +541,13 @@ async function fetchPosts(){
     console.warn('נכשלה טעינת מקומות', e);
     POSTS = [];
   }
+}
+
+function openPostFromHash(){
+  const m = /^#post-(.+)$/.exec(location.hash);
+  if(!m) return;
+  const p = POSTS.find(x=>String(x.id)===m[1]);
+  if(p) openPost(p);
 }
 
 /* ===== State ===== */
@@ -619,6 +645,9 @@ function render(){
               <button class="like-btn" type="button" data-type="${r.type}" aria-label="${r.label}">
                 <span class="emoji">${r.emoji}</span> <span class="react-count">${p[r.field]||0}</span>
               </button>`).join('')}
+            <button class="like-btn share-btn-card" type="button" aria-label="שיתוף">
+              <span class="emoji">🔗</span>
+            </button>
           </div>
         </div>
       </div>`;
@@ -626,6 +655,7 @@ function render(){
     card.querySelectorAll('.like-btn').forEach(btn=>{
       btn.addEventListener('click', function(e){
         e.stopPropagation();
+        if(btn.classList.contains('share-btn-card')){ sharePost(p); return; }
         reactToPost(p, btn.dataset.type, this);
       });
     });
@@ -655,6 +685,37 @@ async function reactToPost(p, type, btn){
   setTimeout(()=>btn.style.transform='scale(1)',150);
 }
 
+async function sharePost(p){
+  if(!p) return;
+  const url = `${location.origin}${location.pathname}#post-${p.id}`;
+  const text = `${p.title} · 📍 ${p.location}\n${p.description || ''}`.trim();
+  const data = { title: p.title, text, url };
+  try{
+    if(navigator.share && (!navigator.canShare || navigator.canShare(data))){
+      await navigator.share(data);
+      return;
+    }
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    toast('הקישור הועתק ללוח 📋');
+  }catch(e){
+    if(e && e.name === 'AbortError') return; // user cancelled the share sheet
+    console.warn('שיתוף נכשל', e);
+  }
+}
+
+function toast(msg){
+  let t = document.getElementById('toast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
 /* ===== Post detail + comments ===== */
 let currentPost = null;
 
@@ -682,12 +743,14 @@ function openPost(p){
   document.getElementById('commentsTitle').textContent = 'תגובות';
   document.getElementById('commentWarning').style.display = 'none';
   document.getElementById('postOverlay').classList.add('show');
+  history.replaceState(null, '', `#post-${p.id}`);
   loadComments(p.id);
 }
 
 function closePost(){
   document.getElementById('postOverlay').classList.remove('show');
   currentPost = null;
+  history.replaceState(null, '', location.pathname + location.search);
 }
 document.getElementById('postOverlay').addEventListener('click',e=>{ if(e.target.id==='postOverlay') closePost(); });
 
@@ -931,7 +994,9 @@ function escapeHtml(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','
   buildEmojiPicker();
   await fetchPosts();
   render();
+  openPostFromHash();
 })();
+window.addEventListener('hashchange', openPostFromHash);
 
 /* ===== Splash intro timing ===== */
 document.body.classList.add('splash-active');
