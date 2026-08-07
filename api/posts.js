@@ -4,6 +4,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const posts = await sql`
       select id, title, description, category, price, location, author, emoji, color, image_url,
+             media_type, poster_url,
              reactions_heart, reactions_thumb, reactions_hundred, created_at
       from posts
       order by created_at desc
@@ -12,7 +13,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { title, description, category, price, location, author, emoji, color, image_url } = req.body ?? {};
+    const { title, description, category, price, location, author, emoji, color, image_url, media_type, poster_url } = req.body ?? {};
 
     if (!title || typeof title !== 'string' || !title.trim()) {
       return res.status(400).json({ error: 'title is required' });
@@ -23,9 +24,12 @@ export default async function handler(req, res) {
     if (!category || !price || !emoji || !color) {
       return res.status(400).json({ error: 'category, price, emoji and color are required' });
     }
+    if (media_type && media_type !== 'image' && media_type !== 'video') {
+      return res.status(400).json({ error: 'media_type must be image or video' });
+    }
 
     const [post] = await sql`
-      insert into posts (title, description, category, price, location, author, emoji, color, image_url)
+      insert into posts (title, description, category, price, location, author, emoji, color, image_url, media_type, poster_url)
       values (
         ${title.trim()},
         ${description?.trim() || 'ללא תיאור'},
@@ -35,9 +39,12 @@ export default async function handler(req, res) {
         ${author.trim().slice(0, 60)},
         ${emoji},
         ${color},
-        ${image_url ?? null}
+        ${image_url ?? null},
+        ${media_type || 'image'},
+        ${poster_url ?? null}
       )
       returning id, title, description, category, price, location, author, emoji, color, image_url,
+                media_type, poster_url,
                 reactions_heart, reactions_thumb, reactions_hundred, created_at
     `;
     return res.status(201).json(post);

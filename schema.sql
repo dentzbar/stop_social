@@ -32,3 +32,7 @@ alter table posts add column if not exists reactions_thumb integer not null defa
 alter table posts add column if not exists reactions_hundred integer not null default 0;
 alter table posts add column if not exists author text not null default 'אנונימי';
 update posts set reactions_heart = likes where reactions_heart = 0 and likes > 0;
+
+-- migration: video support (media_type distinguishes image/video, poster_url is the static feed thumbnail for videos)
+alter table posts add column if not exists media_type text not null default 'image';
+alter table posts add column if not exists poster_url text;

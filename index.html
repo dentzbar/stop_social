@@ -153,6 +153,10 @@
     position:absolute;top:10px;inset-inline-end:10px;background:rgba(18,33,26,.75);color:#fff;
     font-size:11px;padding:4px 10px;border-radius:20px;font-weight:600;
   }
+  .ad .play-badge{
+    position:absolute;top:50%;inset-inline-start:50%;transform:translate(-50%,-50%);
+    font-size:28px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));pointer-events:none;
+  }
   .ad .body{padding:14px;flex:1;display:flex;flex-direction:column;gap:6px}
   .ad .body h4{font-size:16px;font-weight:700;line-height:1.3}
   .ad .body p{font-size:13px;color:var(--muted);line-height:1.5;flex:1}
@@ -449,14 +453,16 @@
       <div style="flex:1"><label>מיקום</label><input id="pLoc" type="text" placeholder="תל אביב"></div>
     </div>
     <div class="field">
-      <label>תמונה (אופציונלי)</label>
+      <label>תמונה או סרטון (אופציונלי)</label>
       <label class="upload-box" id="uploadBox" for="pImage">
-        <span id="uploadHint">📷 לחצו כדי לבחור תמונה</span>
+        <span id="uploadHint">📷 לחצו כדי לבחור תמונה או סרטון</span>
         <img id="uploadPreview" style="display:none">
+        <video id="uploadPreviewVideo" style="display:none" muted loop playsinline></video>
       </label>
-      <input id="pImage" type="file" accept="image/*" style="display:none" onchange="handleImage(event)">
+      <input id="pImage" type="file" accept="image/*,video/*" style="display:none" onchange="handleImage(event)">
       <div id="uploadWarning" style="display:none;color:#c0392b;font-size:13px;margin-top:6px"></div>
-      <div style="color:var(--muted);font-size:12px;margin-top:6px">תמונות גדולות מ-4MB יידחסו אוטומטית</div>
+      <div id="uploadProgress" style="display:none;color:var(--muted);font-size:13px;margin-top:6px">⏳ מעבד סרטון...</div>
+      <div style="color:var(--muted);font-size:12px;margin-top:6px">תמונות גדולות מ-4MB וסרטונים ידחסו אוטומטית (עד 30 שניות)</div>
     </div>
     <div class="field">
       <label>אייקון</label>
@@ -505,6 +511,12 @@
 </div>
 
 <script>
+let _blobClientPromise = null;
+function loadBlobClient(){
+  if(!_blobClientPromise) _blobClientPromise = import('https://esm.sh/@vercel/blob@0.27.0/client');
+  return _blobClientPromise;
+}
+
 /* ===== Data ===== */
 const CATEGORIES = [
   {id:'all',        name:'הכל',          emoji:'🌐'},
@@ -626,8 +638,9 @@ function render(){
   list.forEach(p=>{
     const card = document.createElement('div');
     card.className='ad';
-    const coverContent = p.image_url
-      ? `<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover">`
+    const coverSrc = p.media_type === 'video' ? p.poster_url : p.image_url;
+    const coverContent = coverSrc
+      ? `<img src="${coverSrc}" style="width:100%;height:100%;object-fit:cover">${p.media_type==='video' ? '<span class="play-badge">▶️</span>' : ''}`
       : p.emoji;
     card.innerHTML = `
       <div class="cover" style="background:${p.color}">
@@ -722,7 +735,11 @@ let currentPost = null;
 function openPost(p){
   currentPost = p;
   const cover = document.getElementById('postCover');
-  if(p.image_url){
+  if(p.media_type === 'video' && p.image_url){
+    cover.classList.remove('no-img');
+    cover.style.background = p.color;
+    cover.innerHTML = `<video src="${p.image_url}" poster="${p.poster_url || ''}" controls playsinline preload="metadata" style="width:100%;height:100%;object-fit:contain"></video>`;
+  } else if(p.image_url){
     cover.classList.remove('no-img');
     // blurred fill behind a contained image so vertical/horizontal both look clean
     cover.style.background = `${p.color} url("${p.image_url}") center/cover no-repeat`;
@@ -844,9 +861,14 @@ function scrollToFeedAndOpenModal(){
 }
 
 let selectedImageFile = null;
+let selectedPosterBlob = null;
+let selectedMediaType = 'image';
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4MB, safely under Vercel's 4.5MB function body limit
 const MAX_IMAGE_DIMENSION = 1600; // px, longest side
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50MB, after in-browser compression
+const MAX_VIDEO_DURATION_SEC = 30;
+const MAX_VIDEO_DIMENSION = 1280; // px, longest side (~720p)
 
 function fileToImage(file){
   return new Promise((resolve, reject)=>{
@@ -887,7 +909,8 @@ async function autoReduceImageQuality(file){
 function handleImage(e){
   const file = e.target.files[0];
   if(!file) return;
-  handleImageAsync(file);
+  if(file.type.startsWith('video/')) handleVideoAsync(file);
+  else handleImageAsync(file);
 }
 
 async function handleImageAsync(file){
@@ -905,6 +928,8 @@ async function handleImageAsync(file){
     return;
   }
 
+  selectedMediaType = 'image';
+  selectedPosterBlob = null;
   selectedImageFile = finalFile;
   const reader = new FileReader();
   reader.onload = ()=>{
@@ -913,33 +938,178 @@ async function handleImageAsync(file){
     const preview = document.getElementById('uploadPreview');
     preview.src = selectedImage;
     preview.style.display='block';
+    document.getElementById('uploadPreviewVideo').style.display='none';
   };
   reader.readAsDataURL(finalFile);
+}
+
+function fileToVideo(file){
+  return new Promise((resolve, reject)=>{
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.onloadedmetadata = ()=>resolve(video);
+    video.onerror = reject;
+    video.src = URL.createObjectURL(file);
+  });
+}
+
+function pickVideoMimeType(){
+  const candidates = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'];
+  return candidates.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || null;
+}
+
+async function extractPosterBlob(video, atTime){
+  return new Promise(resolve=>{
+    const onSeeked = ()=>{
+      video.removeEventListener('seeked', onSeeked);
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob=>resolve(blob), 'image/jpeg', 0.8);
+    };
+    video.addEventListener('seeked', onSeeked);
+    video.currentTime = atTime;
+  });
+}
+
+async function compressVideo(file, maxDimension){
+  const video = await fileToVideo(file);
+  const duration = video.duration;
+  const clipDuration = Math.min(duration, MAX_VIDEO_DURATION_SEC);
+  const startTime = Math.max(0, duration - MAX_VIDEO_DURATION_SEC); // trim from the end if too long
+
+  const scale = Math.min(1, maxDimension / Math.max(video.videoWidth, video.videoHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(video.videoWidth * scale);
+  canvas.height = Math.round(video.videoHeight * scale);
+  const ctx = canvas.getContext('2d');
+
+  const posterBlob = await extractPosterBlob(video, startTime);
+
+  const mimeType = pickVideoMimeType();
+  if(!mimeType){ URL.revokeObjectURL(video.src); return { blob: null, posterBlob }; }
+
+  const canvasStream = canvas.captureStream(30);
+  const sourceStream = video.captureStream ? video.captureStream() : video.mozCaptureStream();
+  sourceStream.getAudioTracks().forEach(track => canvasStream.addTrack(track));
+
+  const bitsPerSecond = Math.floor((MAX_VIDEO_BYTES * 8) / clipDuration * 0.85);
+  const recorder = new MediaRecorder(canvasStream, { mimeType, videoBitsPerSecond: bitsPerSecond });
+  const chunks = [];
+  recorder.ondataavailable = e => { if(e.data.size > 0) chunks.push(e.data); };
+
+  const recordingDone = new Promise(resolve => { recorder.onstop = resolve; });
+
+  let drawing = true;
+  function drawFrame(){
+    if(!drawing) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    requestAnimationFrame(drawFrame);
+  }
+
+  video.currentTime = startTime;
+  await new Promise(resolve=>{ video.onseeked = resolve; });
+  recorder.start();
+  drawFrame();
+  await video.play();
+
+  await new Promise(resolve=>{
+    setTimeout(resolve, clipDuration * 1000);
+  });
+
+  drawing = false;
+  video.pause();
+  recorder.stop();
+  await recordingDone;
+  URL.revokeObjectURL(video.src);
+
+  const blob = new Blob(chunks, { type: mimeType });
+  return { blob, posterBlob };
+}
+
+async function autoReduceVideo(file){
+  const attempts = [MAX_VIDEO_DIMENSION, 854, 640];
+  let last = null;
+  for(const dimension of attempts){
+    const result = await compressVideo(file, dimension);
+    last = result;
+    if(result.blob && result.blob.size <= MAX_VIDEO_BYTES) return result;
+  }
+  return last;
+}
+
+async function handleVideoAsync(file){
+  const warningEl = document.getElementById('uploadWarning');
+  const progressEl = document.getElementById('uploadProgress');
+  warningEl.style.display = 'none';
+  progressEl.style.display = 'block';
+
+  try{
+    const { blob, posterBlob } = await autoReduceVideo(file);
+
+    if(!blob || blob.size > MAX_VIDEO_BYTES){
+      warningEl.textContent = `⚠️ הסרטון גדול מדי (מקסימום 50MB) גם לאחר דחיסה. נסו סרטון קצר יותר.`;
+      warningEl.style.display = 'block';
+      return;
+    }
+
+    selectedMediaType = 'video';
+    selectedImageFile = new File([blob], (file.name || 'upload').replace(/\.\w+$/, '') + '.webm', { type: blob.type });
+    selectedPosterBlob = posterBlob;
+
+    selectedImage = URL.createObjectURL(blob);
+    document.getElementById('uploadHint').style.display='none';
+    document.getElementById('uploadPreview').style.display='none';
+    const videoPreview = document.getElementById('uploadPreviewVideo');
+    videoPreview.src = selectedImage;
+    videoPreview.style.display='block';
+  }catch(e){
+    console.warn('נכשל עיבוד הסרטון', e);
+    warningEl.textContent = `⚠️ לא הצלחנו לעבד את הסרטון. נסו סרטון אחר.`;
+    warningEl.style.display = 'block';
+  }finally{
+    progressEl.style.display = 'none';
+  }
 }
 
 function resetImagePicker(){
   selectedImage = null;
   selectedImageFile = null;
+  selectedPosterBlob = null;
+  selectedMediaType = 'image';
   document.getElementById('pImage').value = '';
   document.getElementById('uploadHint').style.display='block';
   document.getElementById('uploadWarning').style.display='none';
+  document.getElementById('uploadProgress').style.display='none';
   const preview = document.getElementById('uploadPreview');
   preview.src=''; preview.style.display='none';
+  const videoPreview = document.getElementById('uploadPreviewVideo');
+  videoPreview.src=''; videoPreview.style.display='none';
+}
+
+async function uploadToBlob(file){
+  const { upload } = await loadBlobClient();
+  const blob = await upload(file.name || 'upload', file, {
+    access: 'public',
+    handleUploadUrl: '/api/upload',
+  });
+  return blob.url;
 }
 
 async function uploadSelectedImage(){
-  if(!selectedImageFile) return null;
-  const res = await fetch('/api/upload', {
-    method:'POST',
-    headers:{
-      'Content-Type': selectedImageFile.type || 'application/octet-stream',
-      'X-Filename': selectedImageFile.name || 'upload',
-    },
-    body: selectedImageFile,
-  });
-  if(!res.ok) throw new Error('image upload failed');
-  const { url } = await res.json();
-  return url;
+  if(!selectedImageFile) return { image_url: null, media_type: 'image', poster_url: null };
+
+  const image_url = await uploadToBlob(selectedImageFile);
+
+  let poster_url = null;
+  if(selectedMediaType === 'video' && selectedPosterBlob){
+    const posterFile = new File([selectedPosterBlob], 'poster.jpg', { type: 'image/jpeg' });
+    poster_url = await uploadToBlob(posterFile);
+  }
+
+  return { image_url, media_type: selectedMediaType, poster_url };
 }
 
 let submitting = false;
@@ -958,11 +1128,11 @@ async function submitPost(btn){
   submitting = true;
   if(btn){ btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'משתף…'; }
   try{
-    const image_url = await uploadSelectedImage();
+    const { image_url, media_type, poster_url } = await uploadSelectedImage();
     const res = await fetch('/api/posts', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({title,description,category,price,location,author,emoji:selectedEmoji,color,image_url}),
+      body: JSON.stringify({title,description,category,price,location,author,emoji:selectedEmoji,color,image_url,media_type,poster_url}),
     });
     if(!res.ok) throw new Error('post creation failed');
     const post = await res.json();
