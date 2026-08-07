@@ -863,6 +863,8 @@ function scrollToFeedAndOpenModal(){
 let selectedImageFile = null;
 let selectedPosterBlob = null;
 let selectedMediaType = 'image';
+let mediaPickGeneration = 0; // bumped on every file pick so a stale async result can't clobber a newer one
+let processingMedia = false; // true while a video is compressing — blocks submit so it can't fire with stale state
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4MB, safely under Vercel's 4.5MB function body limit
 const MAX_IMAGE_DIMENSION = 1600; // px, longest side
@@ -917,11 +919,12 @@ function isVideoFile(file){
 function handleImage(e){
   const file = e.target.files[0];
   if(!file) return;
-  if(isVideoFile(file)) handleVideoAsync(file);
-  else handleImageAsync(file);
+  const generation = ++mediaPickGeneration; // invalidates any in-flight pick from a previous selection
+  if(isVideoFile(file)) handleVideoAsync(file, generation);
+  else handleImageAsync(file, generation);
 }
 
-async function handleImageAsync(file){
+async function handleImageAsync(file, generation){
   const warningEl = document.getElementById('uploadWarning');
   warningEl.style.display = 'none';
 
@@ -929,6 +932,7 @@ async function handleImageAsync(file){
   if(file.size > MAX_UPLOAD_BYTES){
     finalFile = await autoReduceImageQuality(file);
   }
+  if(generation !== mediaPickGeneration) return; // a newer pick superseded this one while we were compressing
 
   if(finalFile.size > MAX_UPLOAD_BYTES){
     warningEl.textContent = `⚠️ התמונה גדולה מדי (מקסימום 4MB) גם לאחר דחיסה. נסו תמונה אחרת.`;
@@ -941,6 +945,7 @@ async function handleImageAsync(file){
   selectedImageFile = finalFile;
   const reader = new FileReader();
   reader.onload = ()=>{
+    if(generation !== mediaPickGeneration) return;
     selectedImage = reader.result;
     document.getElementById('uploadHint').style.display='none';
     const preview = document.getElementById('uploadPreview');
@@ -1048,14 +1053,16 @@ async function autoReduceVideo(file){
   return last;
 }
 
-async function handleVideoAsync(file){
+async function handleVideoAsync(file, generation){
   const warningEl = document.getElementById('uploadWarning');
   const progressEl = document.getElementById('uploadProgress');
   warningEl.style.display = 'none';
   progressEl.style.display = 'block';
+  processingMedia = true;
 
   try{
     const { blob, posterBlob } = await autoReduceVideo(file);
+    if(generation !== mediaPickGeneration) return; // a newer pick superseded this one while we were compressing
 
     if(!blob || blob.size > MAX_VIDEO_BYTES){
       warningEl.textContent = `⚠️ הסרטון גדול מדי (מקסימום 50MB) גם לאחר דחיסה. נסו סרטון קצר יותר.`;
@@ -1075,14 +1082,21 @@ async function handleVideoAsync(file){
     videoPreview.style.display='block';
   }catch(e){
     console.warn('נכשל עיבוד הסרטון', e);
-    warningEl.textContent = `⚠️ לא הצלחנו לעבד את הסרטון. נסו סרטון אחר.`;
-    warningEl.style.display = 'block';
+    if(generation === mediaPickGeneration){
+      warningEl.textContent = `⚠️ לא הצלחנו לעבד את הסרטון. נסו סרטון אחר.`;
+      warningEl.style.display = 'block';
+    }
   }finally{
-    progressEl.style.display = 'none';
+    if(generation === mediaPickGeneration){
+      progressEl.style.display = 'none';
+      processingMedia = false;
+    }
   }
 }
 
 function resetImagePicker(){
+  mediaPickGeneration++; // invalidate any in-flight compression from the pick being cleared
+  processingMedia = false;
   selectedImage = null;
   selectedImageFile = null;
   selectedPosterBlob = null;
@@ -1107,22 +1121,28 @@ async function uploadToBlob(file){
 }
 
 async function uploadSelectedImage(){
-  if(!selectedImageFile) return { image_url: null, media_type: 'image', poster_url: null };
+  // snapshot module state synchronously — it can be reset mid-flight (e.g. modal closed) once we start awaiting
+  const fileToUpload = selectedImageFile;
+  const mediaType = selectedMediaType;
+  const posterBlob = selectedPosterBlob;
 
-  const image_url = await uploadToBlob(selectedImageFile);
+  if(!fileToUpload) return { image_url: null, media_type: 'image', poster_url: null };
+
+  const image_url = await uploadToBlob(fileToUpload);
 
   let poster_url = null;
-  if(selectedMediaType === 'video' && selectedPosterBlob){
-    const posterFile = new File([selectedPosterBlob], 'poster.jpg', { type: 'image/jpeg' });
+  if(mediaType === 'video' && posterBlob){
+    const posterFile = new File([posterBlob], 'poster.jpg', { type: 'image/jpeg' });
     poster_url = await uploadToBlob(posterFile);
   }
 
-  return { image_url, media_type: selectedMediaType, poster_url };
+  return { image_url, media_type: mediaType, poster_url };
 }
 
 let submitting = false;
 async function submitPost(btn){
   if(submitting) return; // prevent double-submit → duplicate posts
+  if(processingMedia){ alert('רגע, הסרטון עדיין בעיבוד… נסו שוב בעוד כמה שניות 🙏'); return; }
   const author = document.getElementById('pAuthor').value.trim();
   if(!author){ alert('צריך למלא את השם שלך 😊'); return; }
   const title = document.getElementById('pTitle').value.trim();
