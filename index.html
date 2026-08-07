@@ -245,7 +245,7 @@
   /* blurred fill so contained vertical/horizontal images have no empty bars */
   .post-cover::before{content:"";position:absolute;inset:0;background:inherit;background-size:cover;background-position:center;filter:blur(22px) brightness(.85);transform:scale(1.1)}
   /* cap height so the post bottom (text + reactions) always stays visible */
-  .post-cover img{position:relative;width:100%;max-height:min(45vh,320px);object-fit:contain;display:block}
+  .post-cover img,.post-cover video{position:relative;width:100%;max-height:min(45vh,320px);object-fit:contain;display:block}
   .post-detail{padding:18px 22px 8px}
   .post-tags{display:flex;gap:8px;margin-bottom:8px}
   .post-cat{background:var(--green);color:#fff;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px}
@@ -738,7 +738,7 @@ function openPost(p){
   if(p.media_type === 'video' && p.image_url){
     cover.classList.remove('no-img');
     cover.style.background = p.color;
-    cover.innerHTML = `<video src="${p.image_url}" poster="${p.poster_url || ''}" controls playsinline preload="metadata" style="width:100%;height:100%;object-fit:contain"></video>`;
+    cover.innerHTML = `<video src="${p.image_url}" poster="${p.poster_url || ''}" controls playsinline preload="metadata"></video>`;
   } else if(p.image_url){
     cover.classList.remove('no-img');
     // blurred fill behind a contained image so vertical/horizontal both look clean
@@ -906,10 +906,18 @@ async function autoReduceImageQuality(file){
   return new File([blob], (file.name || 'upload').replace(/\.\w+$/, '') + '.jpg', { type:'image/jpeg' });
 }
 
+const VIDEO_EXTENSIONS = /\.(mp4|mov|webm|m4v|avi|mkv|3gp)$/i;
+
+function isVideoFile(file){
+  if(file.type) return file.type.startsWith('video/');
+  // some mobile browsers report an empty/generic type for picked videos — fall back to extension sniffing
+  return VIDEO_EXTENSIONS.test(file.name || '');
+}
+
 function handleImage(e){
   const file = e.target.files[0];
   if(!file) return;
-  if(file.type.startsWith('video/')) handleVideoAsync(file);
+  if(isVideoFile(file)) handleVideoAsync(file);
   else handleImageAsync(file);
 }
 
