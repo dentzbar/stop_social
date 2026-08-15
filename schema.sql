@@ -52,3 +52,18 @@ on conflict (name) do nothing;
 -- migration: user profile picture — either a chosen emoji or an uploaded image (blob url)
 alter table users add column if not exists avatar_type text not null default 'emoji';
 alter table users add column if not exists avatar_value text not null default '🙂';
+
+-- migration: direct messages between users, with read tracking for the notification bell
+create table if not exists messages (
+  id serial primary key,
+  sender_id integer not null references users(id) on delete cascade,
+  recipient_id integer not null references users(id) on delete cascade,
+  body text not null,
+  read_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists messages_conversation_idx
+  on messages (least(sender_id, recipient_id), greatest(sender_id, recipient_id), created_at);
+create index if not exists messages_unread_idx
+  on messages (recipient_id, read_at);

@@ -101,6 +101,16 @@
     width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#39c46e,#22a35a);
     color:#fff;display:grid;place-items:center;font-weight:700;font-size:16px;cursor:pointer;flex:none;
   }
+  .bell{
+    position:relative;width:42px;height:42px;border-radius:50%;background:#eef2ef;
+    display:grid;place-items:center;font-size:19px;cursor:pointer;flex:none;transition:.15s;
+  }
+  .bell:hover{background:#e0e8e3}
+  .bell-badge{
+    position:absolute;top:-2px;inset-inline-end:-2px;min-width:18px;height:18px;padding:0 4px;
+    border-radius:9px;background:#e0335f;color:#fff;font-size:11px;font-weight:700;
+    display:grid;place-items:center;line-height:1;box-shadow:0 0 0 2px var(--card);
+  }
 
   /* ===== Layout ===== */
   .wrap{max-width:1180px;margin:0 auto;padding:22px 20px;display:grid;grid-template-columns:220px 1fr;gap:22px}
@@ -250,6 +260,47 @@
   .user-divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:14px 0}
   .user-divider::before,.user-divider::after{content:'';flex:1;height:1px;background:var(--line)}
 
+  /* ===== Messages ===== */
+  #messagesOverlay{z-index:150}
+  .msg-modal{width:100%;max-width:520px;height:640px;max-height:85vh;display:flex;flex-direction:column;padding:0;overflow:hidden}
+  .msg-head{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--line);flex:none}
+  .msg-head h2{font-size:18px;flex:1}
+  .msg-back{
+    width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;background:#eef2ef;
+    display:grid;place-items:center;font-size:15px;font-weight:700;flex:none;
+  }
+  .msg-back:hover{background:#e0e8e3}
+  .msg-new-btn{
+    width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;background:var(--green);
+    color:#fff;display:grid;place-items:center;font-size:18px;font-weight:700;flex:none;
+  }
+  .msg-new-btn:hover{background:var(--green-dark)}
+  .msg-body{flex:1;overflow:auto;padding:8px}
+  .conv-row{
+    display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;cursor:pointer;transition:.15s;
+  }
+  .conv-row:hover{background:#eafaf0}
+  .conv-row .user-row-icon{width:40px;height:40px;font-size:20px}
+  .conv-row .conv-info{flex:1;min-width:0}
+  .conv-row .conv-name{font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px}
+  .conv-row .conv-last{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .conv-row .conv-unread{
+    background:#e0335f;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;
+    border-radius:9px;display:grid;place-items:center;padding:0 4px;flex:none;
+  }
+  .conv-empty{color:var(--muted);font-size:14px;text-align:center;padding:40px 20px}
+
+  .thread-list{display:flex;flex-direction:column;gap:8px;padding:14px}
+  .thread-msg{max-width:78%;padding:9px 14px;border-radius:16px;font-size:14px;line-height:1.4;word-break:break-word}
+  .thread-msg.mine{align-self:flex-start;background:var(--green);color:#fff;border-bottom-left-radius:4px}
+  .thread-msg.theirs{align-self:flex-end;background:#eef2ef;color:var(--ink);border-bottom-right-radius:4px}
+  .thread-form{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);flex:none}
+  .thread-form input{
+    flex:1;padding:11px 14px;border:1.5px solid var(--line);border-radius:20px;
+    font-family:inherit;font-size:14px;background:#f7faf8;
+  }
+  .thread-form input:focus{outline:none;border-color:var(--green);background:#fff}
+
   /* ===== Post detail modal ===== */
   .post-modal{padding:0;overflow:hidden;display:flex;flex-direction:column}
   .modal-close{
@@ -328,6 +379,7 @@
     .actions .btn{display:none}
     .actions{order:2;margin-inline-start:auto;gap:8px}
     .avatar{width:38px;height:38px;font-size:15px}
+    .bell{width:38px;height:38px;font-size:17px}
     .search{order:3;flex-basis:100%;max-width:none}
     .search input{padding:11px 42px 11px 14px}
 
@@ -403,6 +455,10 @@
 
     <div class="actions">
       <button class="btn btn-primary btn-sm" onclick="openModal()">＋ שתף מקום</button>
+      <div class="bell" id="msgBell" title="הודעות" onclick="openMessages()">
+        🔔
+        <span class="bell-badge" id="msgBellBadge" style="display:none">0</span>
+      </div>
       <div class="avatar" id="userAvatar" title="עריכת תמונת פרופיל" onclick="openEditAvatar()" style="cursor:pointer">?</div>
     </div>
   </div>
@@ -488,6 +544,32 @@
     </div>
     <div style="text-align:center;margin-top:14px">
       <a href="#" style="font-size:13px;color:var(--muted)" onclick="event.preventDefault();closeEditAvatar();openUserPicker();">החלפת משתמש</a>
+    </div>
+  </div>
+</div>
+
+<!-- Messages -->
+<div class="overlay" id="messagesOverlay">
+  <div class="modal msg-modal">
+    <div class="msg-head" id="msgHead">
+      <h2 id="msgTitle">הודעות 💬</h2>
+      <button class="msg-new-btn" id="msgNewBtn" title="שיחה חדשה" onclick="openNewConversationPicker()">＋</button>
+      <button class="modal-close" style="position:static;box-shadow:none" onclick="closeMessages()">✕</button>
+    </div>
+    <div class="msg-body" id="msgBody"></div>
+  </div>
+</div>
+
+<!-- New conversation: pick a user -->
+<div class="overlay" id="newConvOverlay">
+  <div class="modal">
+    <h2>שיחה חדשה 💬</h2>
+    <div class="field">
+      <input id="newConvSearch" type="text" placeholder="🔍 חיפוש משתמש…" oninput="buildNewConvUserList()">
+    </div>
+    <div class="user-list" id="newConvUserList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost-modal" type="button" style="flex:1" onclick="closeNewConversationPicker()">ביטול</button>
     </div>
   </div>
 </div>
@@ -634,6 +716,7 @@ function currentUser(){
 function setCurrentUser(user){
   localStorage.setItem('stopUser', JSON.stringify(user));
   renderAvatar();
+  startUnreadPolling();
 }
 
 async function fetchUsers(){
@@ -829,6 +912,208 @@ async function saveEditAvatar(){
     console.warn('נכשל עדכון תמונת פרופיל', e);
     warn.textContent='משהו השתבש, נסו שוב 🙏'; warn.style.display='block';
   }
+}
+
+/* ===== Direct messages ===== */
+let CONVERSATIONS = [];
+let activeThreadUser = null; // the {user_id, name, avatar_type, avatar_value} of the open thread, or null for the conversation list
+let unreadPollTimer = null;
+
+function ageTextShort(createdAt){
+  const h = Math.max(1, Math.round((Date.now() - new Date(createdAt).getTime()) / 3600000));
+  return h<=1 ? 'לפני שעה' : (h<24 ? `לפני ${h} שעות` : `לפני ${Math.round(h/24)} ימים`);
+}
+
+async function fetchUnreadCount(){
+  const user = currentUser();
+  if(!user) return;
+  try{
+    const res = await fetch(`/api/messages/unread-count?user_id=${user.id}`);
+    if(!res.ok) throw new Error('failed to load unread count');
+    const { count } = await res.json();
+    const badge = document.getElementById('msgBellBadge');
+    if(count > 0){ badge.textContent = count > 99 ? '99+' : String(count); badge.style.display='grid'; }
+    else{ badge.style.display='none'; }
+  }catch(e){
+    console.warn('נכשלה טעינת מספר הודעות שלא נקראו', e);
+  }
+}
+
+function startUnreadPolling(){
+  fetchUnreadCount();
+  if(unreadPollTimer) clearInterval(unreadPollTimer);
+  unreadPollTimer = setInterval(fetchUnreadCount, 20000);
+}
+
+async function fetchConversations(){
+  const user = currentUser();
+  if(!user) return;
+  try{
+    const res = await fetch(`/api/messages?user_id=${user.id}`);
+    if(!res.ok) throw new Error('failed to load conversations');
+    CONVERSATIONS = await res.json();
+  }catch(e){
+    console.warn('נכשלה טעינת שיחות', e);
+    CONVERSATIONS = [];
+  }
+}
+
+function renderConversationList(){
+  document.getElementById('msgTitle').textContent = 'הודעות 💬';
+  document.getElementById('msgNewBtn').style.display = '';
+  const el = document.getElementById('msgBody');
+  if(!CONVERSATIONS.length){
+    el.innerHTML = '<div class="conv-empty">אין עדיין שיחות. התחילו שיחה חדשה עם ה-＋ 👋</div>';
+    return;
+  }
+  el.innerHTML = '';
+  CONVERSATIONS.forEach(c=>{
+    const d = document.createElement('div');
+    d.className = 'conv-row';
+    const mineLastMsg = c.last_message_sender_id === currentUser().id;
+    d.innerHTML = `
+      <span class="user-row-icon">${avatarHtml({avatar_type:c.avatar_type, avatar_value:c.avatar_value})}</span>
+      <div class="conv-info">
+        <div class="conv-name">${escapeHtml(c.name)}</div>
+        <div class="conv-last">${mineLastMsg?'אתם: ':''}${escapeHtml(c.last_message)}</div>
+      </div>
+      ${c.unread_count>0 ? `<span class="conv-unread">${c.unread_count>99?'99+':c.unread_count}</span>` : ''}
+    `;
+    d.onclick = ()=>openThread({user_id:c.user_id, name:c.name, avatar_type:c.avatar_type, avatar_value:c.avatar_value});
+    el.appendChild(d);
+  });
+}
+
+async function openMessages(){
+  const user = currentUser();
+  if(!user){ openUserPicker(); return; }
+  document.getElementById('messagesOverlay').classList.add('show');
+  activeThreadUser = null;
+  await fetchConversations();
+  renderConversationList();
+}
+
+function closeMessages(){
+  document.getElementById('messagesOverlay').classList.remove('show');
+  activeThreadUser = null;
+}
+
+async function openThread(otherUser){
+  activeThreadUser = otherUser;
+  document.getElementById('msgTitle').innerHTML = `
+    <button class="msg-back" onclick="backToConversationList()">→</button>
+    <span style="margin-inline-start:8px">${escapeHtml(otherUser.name)}</span>
+  `;
+  document.getElementById('msgNewBtn').style.display = 'none';
+  await renderThread();
+  markThreadRead(otherUser.user_id);
+}
+
+function backToConversationList(){
+  activeThreadUser = null;
+  document.getElementById('msgTitle').textContent = 'הודעות 💬';
+  document.getElementById('msgNewBtn').style.display = '';
+  fetchConversations().then(renderConversationList);
+}
+
+async function renderThread(){
+  const user = currentUser();
+  const other = activeThreadUser;
+  const el = document.getElementById('msgBody');
+  el.innerHTML = '<div class="thread-list" id="threadList"></div>';
+  try{
+    const res = await fetch(`/api/messages?user_id=${user.id}&with_id=${other.user_id}`);
+    if(!res.ok) throw new Error('failed to load thread');
+    const thread = await res.json();
+    const list = document.getElementById('threadList');
+    if(!thread.length){
+      list.innerHTML = '<div class="conv-empty">עדיין אין הודעות, כתבו את הראשונה 👋</div>';
+    }else{
+      list.innerHTML = thread.map(m=>`
+        <div class="thread-msg ${m.sender_id===user.id?'mine':'theirs'}">${escapeHtml(m.body)}</div>
+      `).join('');
+    }
+    el.innerHTML += `
+      <div class="thread-form">
+        <input id="threadInput" type="text" placeholder="כתבו הודעה…" maxlength="2000"
+               onkeydown="if(event.key==='Enter')sendThreadMessage()">
+        <button class="btn btn-primary" type="button" onclick="sendThreadMessage()">שלח</button>
+      </div>
+    `;
+    el.querySelector('#threadList').scrollTop = el.querySelector('#threadList').scrollHeight;
+  }catch(e){
+    console.warn('נכשלה טעינת שיחה', e);
+    el.innerHTML = '<div class="conv-empty">נכשלה טעינת השיחה 😕</div>';
+  }
+}
+
+async function markThreadRead(withId){
+  const user = currentUser();
+  try{
+    await fetch('/api/messages', {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({user_id:user.id, with_id:withId}),
+    });
+    fetchUnreadCount();
+  }catch(e){
+    console.warn('נכשל סימון הודעות כנקראו', e);
+  }
+}
+
+async function sendThreadMessage(){
+  const user = currentUser();
+  const other = activeThreadUser;
+  const input = document.getElementById('threadInput');
+  const body = input.value.trim();
+  if(!body) return;
+  input.value = '';
+  try{
+    const res = await fetch('/api/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({sender_id:user.id, recipient_id:other.user_id, body}),
+    });
+    if(!res.ok) throw new Error('send failed');
+  }catch(e){
+    console.warn('נכשלה שליחת הודעה', e);
+    input.value = body;
+    return;
+  }
+  await renderThread();
+}
+
+function buildNewConvUserList(){
+  const el = document.getElementById('newConvUserList');
+  el.innerHTML='';
+  const user = currentUser();
+  const q = document.getElementById('newConvSearch').value.trim().toLowerCase();
+  const candidates = USERS.filter(u=>u.id!==user.id && (!q || u.name.toLowerCase().includes(q)));
+  if(!candidates.length){
+    el.innerHTML = '<div class="user-list-empty">לא נמצאו משתמשים תואמים</div>';
+    return;
+  }
+  candidates.forEach(u=>{
+    const d = document.createElement('div');
+    d.className = 'user-row';
+    d.innerHTML = `<span class="user-row-icon">${avatarHtml(u)}</span><span>${escapeHtml(u.name)}</span>`;
+    d.onclick = ()=>{
+      closeNewConversationPicker();
+      openThread({user_id:u.id, name:u.name, avatar_type:u.avatar_type, avatar_value:u.avatar_value});
+    };
+    el.appendChild(d);
+  });
+}
+
+async function openNewConversationPicker(){
+  document.getElementById('newConvSearch').value = '';
+  document.getElementById('newConvOverlay').classList.add('show');
+  await fetchUsers();
+  buildNewConvUserList();
+}
+
+function closeNewConversationPicker(){
+  document.getElementById('newConvOverlay').classList.remove('show');
 }
 
 function openPostFromHash(){
@@ -1469,6 +1754,7 @@ function escapeHtml(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','
   openPostFromHash();
   if(currentUser()){
     renderAvatar();
+    startUnreadPolling();
   }else{
     openUserPicker();
   }
