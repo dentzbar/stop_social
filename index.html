@@ -397,7 +397,7 @@
 
     <div class="actions">
       <button class="btn btn-primary btn-sm" onclick="openModal()">＋ שתף מקום</button>
-      <div class="avatar" id="userAvatar" title="החלף משתמש" onclick="openUserPicker()" style="cursor:pointer">?</div>
+      <div class="avatar" id="userAvatar" title="עריכת תמונת פרופיל" onclick="openEditAvatar()" style="cursor:pointer">?</div>
     </div>
   </div>
 </header>
@@ -437,6 +437,9 @@
   <div class="modal">
     <h2>מי מדבר? 👋</h2>
     <div class="hint">בחרו משתמש קיים או צרו משתמש חדש כדי להמשיך</div>
+    <div class="field">
+      <input id="userSearch" type="text" placeholder="🔍 חיפוש משתמש…" oninput="buildUserList()">
+    </div>
     <div class="user-list" id="userList"></div>
     <div class="user-divider">או</div>
     <div class="field">
@@ -456,6 +459,29 @@
     <div id="userWarning" style="display:none;color:#c0392b;font-size:13px;margin-bottom:10px"></div>
     <div class="modal-actions">
       <button class="btn btn-primary" type="button" style="flex:1" onclick="createUser()">המשך</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit avatar (existing user) -->
+<div class="overlay" id="editAvatarOverlay">
+  <div class="modal">
+    <h2>עריכת תמונת פרופיל 🖼️</h2>
+    <div class="field">
+      <div class="emoji-pick" id="editAvatarEmojiPick"></div>
+      <label class="upload-box" id="editAvatarUploadBox" for="editAvatarImage" style="height:70px;width:70px;border-radius:50%;margin-top:8px">
+        <span id="editAvatarUploadHint">📷</span>
+        <img id="editAvatarPreview" style="display:none">
+      </label>
+      <input id="editAvatarImage" type="file" accept="image/*" style="display:none" onchange="onEditAvatarImagePicked(event)">
+    </div>
+    <div id="editAvatarWarning" style="display:none;color:#c0392b;font-size:13px;margin-bottom:10px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost-modal" type="button" style="flex:1" onclick="closeEditAvatar()">ביטול</button>
+      <button class="btn btn-primary" type="button" style="flex:1" onclick="saveEditAvatar()">שמירה</button>
+    </div>
+    <div style="text-align:center;margin-top:14px">
+      <a href="#" style="font-size:13px;color:var(--muted)" onclick="event.preventDefault();closeEditAvatar();openUserPicker();">החלפת משתמש</a>
     </div>
   </div>
 </div>
@@ -665,7 +691,13 @@ function buildUserList(){
     el.innerHTML = '<div class="user-list-empty">אין עדיין משתמשים קיימים</div>';
     return;
   }
-  USERS.forEach(u=>{
+  const q = document.getElementById('userSearch').value.trim().toLowerCase();
+  const filtered = q ? USERS.filter(u=>u.name.toLowerCase().includes(q)) : USERS;
+  if(!filtered.length){
+    el.innerHTML = '<div class="user-list-empty">לא נמצאו משתמשים תואמים</div>';
+    return;
+  }
+  filtered.forEach(u=>{
     const d = document.createElement('div');
     d.className = 'user-chip';
     d.textContent = u.name;
@@ -677,6 +709,7 @@ function buildUserList(){
 function openUserPicker(){
   document.getElementById('userOverlay').classList.add('show');
   document.getElementById('newUserName').value='';
+  document.getElementById('userSearch').value='';
   document.getElementById('userWarning').style.display='none';
   selectedAvatarEmoji = AVATAR_EMOJIS[0];
   selectedAvatarImageUrl = null;
@@ -707,6 +740,87 @@ async function createUser(){
     document.getElementById('userOverlay').classList.remove('show');
   }catch(e){
     console.warn('נכשלה יצירת משתמש', e);
+    warn.textContent='משהו השתבש, נסו שוב 🙏'; warn.style.display='block';
+  }
+}
+
+let editAvatarEmoji = AVATAR_EMOJIS[0];
+let editAvatarImageUrl = null;
+
+function buildEditAvatarEmojiPicker(){
+  const el = document.getElementById('editAvatarEmojiPick');
+  el.innerHTML='';
+  AVATAR_EMOJIS.forEach(e=>{
+    const s=document.createElement('span');
+    s.textContent=e;
+    if(e===editAvatarEmoji && !editAvatarImageUrl)s.className='sel';
+    s.onclick=()=>{
+      editAvatarEmoji=e; editAvatarImageUrl=null;
+      document.getElementById('editAvatarPreview').style.display='none';
+      document.getElementById('editAvatarUploadHint').style.display='block';
+      buildEditAvatarEmojiPicker();
+    };
+    el.appendChild(s);
+  });
+}
+
+async function onEditAvatarImagePicked(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const warn = document.getElementById('editAvatarWarning');
+  warn.style.display='none';
+  try{
+    editAvatarImageUrl = await uploadToBlob(file);
+    document.getElementById('editAvatarPreview').src = editAvatarImageUrl;
+    document.getElementById('editAvatarPreview').style.display='block';
+    document.getElementById('editAvatarUploadHint').style.display='none';
+    buildEditAvatarEmojiPicker();
+  }catch(e){
+    console.warn('נכשלה העלאת תמונת פרופיל', e);
+    warn.textContent='נכשלה העלאת התמונה, נסו שוב 🙏'; warn.style.display='block';
+  }
+}
+
+function openEditAvatar(){
+  const user = currentUser();
+  if(!user){ openUserPicker(); return; }
+  document.getElementById('editAvatarOverlay').classList.add('show');
+  document.getElementById('editAvatarWarning').style.display='none';
+  const isImage = user.avatar_type==='image' && user.avatar_value;
+  editAvatarEmoji = isImage ? AVATAR_EMOJIS[0] : (user.avatar_value || AVATAR_EMOJIS[0]);
+  editAvatarImageUrl = isImage ? user.avatar_value : null;
+  const preview = document.getElementById('editAvatarPreview');
+  const hint = document.getElementById('editAvatarUploadHint');
+  if(isImage){ preview.src=user.avatar_value; preview.style.display='block'; hint.style.display='none'; }
+  else{ preview.style.display='none'; hint.style.display='block'; }
+  buildEditAvatarEmojiPicker();
+}
+
+function closeEditAvatar(){
+  document.getElementById('editAvatarOverlay').classList.remove('show');
+}
+
+async function saveEditAvatar(){
+  const user = currentUser();
+  if(!user) return;
+  const warn = document.getElementById('editAvatarWarning');
+  warn.style.display='none';
+
+  const avatar_type = editAvatarImageUrl ? 'image' : 'emoji';
+  const avatar_value = editAvatarImageUrl || editAvatarEmoji;
+
+  try{
+    const res = await fetch('/api/users', {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id:user.id, avatar_type, avatar_value}),
+    });
+    if(!res.ok) throw new Error('avatar update failed');
+    const updated = await res.json();
+    setCurrentUser(updated);
+    closeEditAvatar();
+  }catch(e){
+    console.warn('נכשל עדכון תמונת פרופיל', e);
     warn.textContent='משהו השתבש, נסו שוב 🙏'; warn.style.display='block';
   }
 }
