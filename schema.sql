@@ -36,3 +36,19 @@ update posts set reactions_heart = likes where reactions_heart = 0 and likes > 0
 -- migration: video support (media_type distinguishes image/video, poster_url is the static feed thumbnail for videos)
 alter table posts add column if not exists media_type text not null default 'image';
 alter table posts add column if not exists poster_url text;
+
+-- migration: simple users table (name-only identity, chosen or created on entry)
+create table if not exists users (
+  id serial primary key,
+  name text not null unique,
+  created_at timestamptz not null default now()
+);
+
+insert into users (name)
+select distinct author from posts
+where author is not null and author <> ''
+on conflict (name) do nothing;
+
+-- migration: user profile picture — either a chosen emoji or an uploaded image (blob url)
+alter table users add column if not exists avatar_type text not null default 'emoji';
+alter table users add column if not exists avatar_value text not null default '🙂';

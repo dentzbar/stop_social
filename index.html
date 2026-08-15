@@ -232,6 +232,18 @@
   .btn-ghost-modal:hover{background:#e0e8e3}
   .req{color:#e0335f}
 
+  /* ===== User picker (entry gate) ===== */
+  #userOverlay{z-index:200}
+  .user-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;max-height:240px;overflow:auto}
+  .user-chip{
+    padding:9px 16px;border-radius:20px;border:1.5px solid var(--line);
+    background:#f7faf8;cursor:pointer;font-weight:600;font-size:14px;transition:.15s;
+  }
+  .user-chip:hover{border-color:var(--green);background:#eafaf0}
+  .user-list-empty{color:var(--muted);font-size:14px}
+  .user-divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:14px 0}
+  .user-divider::before,.user-divider::after{content:'';flex:1;height:1px;background:var(--line)}
+
   /* ===== Post detail modal ===== */
   .post-modal{padding:0;overflow:hidden;display:flex;flex-direction:column}
   .modal-close{
@@ -385,7 +397,7 @@
 
     <div class="actions">
       <button class="btn btn-primary btn-sm" onclick="openModal()">＋ שתף מקום</button>
-      <div class="avatar">ד</div>
+      <div class="avatar" id="userAvatar" title="החלף משתמש" onclick="openUserPicker()" style="cursor:pointer">?</div>
     </div>
   </div>
 </header>
@@ -420,15 +432,39 @@
 <!-- Floating share button (mobile) -->
 <button class="fab" type="button" aria-label="שתף מקום" onclick="openModal()">＋</button>
 
+<!-- User picker (entry gate) -->
+<div class="overlay" id="userOverlay">
+  <div class="modal">
+    <h2>מי מדבר? 👋</h2>
+    <div class="hint">בחרו משתמש קיים או צרו משתמש חדש כדי להמשיך</div>
+    <div class="user-list" id="userList"></div>
+    <div class="user-divider">או</div>
+    <div class="field">
+      <label>שם חדש</label>
+      <input id="newUserName" type="text" placeholder="איך קוראים לך?" maxlength="60"
+             onkeydown="if(event.key==='Enter')createUser()">
+    </div>
+    <div class="field">
+      <label>תמונת פרופיל</label>
+      <div class="emoji-pick" id="avatarEmojiPick"></div>
+      <label class="upload-box" id="avatarUploadBox" for="avatarImage" style="height:70px;width:70px;border-radius:50%;margin-top:8px">
+        <span id="avatarUploadHint">📷</span>
+        <img id="avatarPreview" style="display:none">
+      </label>
+      <input id="avatarImage" type="file" accept="image/*" style="display:none" onchange="onAvatarImagePicked(event)">
+    </div>
+    <div id="userWarning" style="display:none;color:#c0392b;font-size:13px;margin-bottom:10px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" type="button" style="flex:1" onclick="createUser()">המשך</button>
+    </div>
+  </div>
+</div>
+
 <!-- New post modal -->
 <div class="overlay" id="overlay">
   <div class="modal">
     <h2>שיתוף מקום חדש 📍</h2>
     <div class="hint">ביקרת במקום מגניב? שתף אותו עם השכונה!</div>
-    <div class="field">
-      <label>השם שלך <span class="req">*</span></label>
-      <input id="pAuthor" type="text" placeholder="איך קוראים לך?" maxlength="60">
-    </div>
     <div class="field">
       <label>שם המקום <span class="req">*</span></label>
       <input id="pTitle" type="text" placeholder="לדוגמה: פארק הירקון">
@@ -498,7 +534,6 @@
       <h3 id="commentsTitle">תגובות</h3>
       <div class="comment-list" id="commentList"></div>
       <div class="comment-form">
-        <input id="cAuthor" type="text" placeholder="השם שלך *" maxlength="60">
         <div class="comment-row">
           <input id="cBody" type="text" placeholder="כתבו תגובה…" maxlength="1000"
                  onkeydown="if(event.key==='Enter')submitComment()">
@@ -552,6 +587,127 @@ async function fetchPosts(){
   }catch(e){
     console.warn('נכשלה טעינת מקומות', e);
     POSTS = [];
+  }
+}
+
+/* ===== Users ===== */
+const AVATAR_EMOJIS = ['🙂','😎','🐱','🐶','🦊','🐼','🐵','🦁','🐸','🐧','🌟','🌸'];
+let USERS = [];
+let selectedAvatarEmoji = AVATAR_EMOJIS[0];
+let selectedAvatarImageUrl = null;
+
+function currentUser(){
+  try{ return JSON.parse(localStorage.getItem('stopUser')); }catch(e){ return null; }
+}
+function setCurrentUser(user){
+  localStorage.setItem('stopUser', JSON.stringify(user));
+  renderAvatar();
+}
+
+async function fetchUsers(){
+  try{
+    const res = await fetch('/api/users');
+    if(!res.ok) throw new Error('failed to load users');
+    USERS = await res.json();
+  }catch(e){
+    console.warn('נכשלה טעינת משתמשים', e);
+    USERS = [];
+  }
+}
+
+function avatarHtml(user){
+  if(!user) return '?';
+  if(user.avatar_type==='image' && user.avatar_value) return `<img src="${user.avatar_value}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  return escapeHtml(user.avatar_value || '🙂');
+}
+
+function renderAvatar(){
+  const user = currentUser();
+  document.getElementById('userAvatar').innerHTML = avatarHtml(user);
+}
+
+function buildAvatarEmojiPicker(){
+  const el = document.getElementById('avatarEmojiPick');
+  el.innerHTML='';
+  AVATAR_EMOJIS.forEach(e=>{
+    const s=document.createElement('span');
+    s.textContent=e;
+    if(e===selectedAvatarEmoji && !selectedAvatarImageUrl)s.className='sel';
+    s.onclick=()=>{
+      selectedAvatarEmoji=e; selectedAvatarImageUrl=null;
+      document.getElementById('avatarPreview').style.display='none';
+      document.getElementById('avatarUploadHint').style.display='block';
+      buildAvatarEmojiPicker();
+    };
+    el.appendChild(s);
+  });
+}
+
+async function onAvatarImagePicked(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  try{
+    selectedAvatarImageUrl = await uploadToBlob(file);
+    document.getElementById('avatarPreview').src = selectedAvatarImageUrl;
+    document.getElementById('avatarPreview').style.display='block';
+    document.getElementById('avatarUploadHint').style.display='none';
+    buildAvatarEmojiPicker();
+  }catch(e){
+    console.warn('נכשלה העלאת תמונת פרופיל', e);
+    alert('נכשלה העלאת התמונה, נסו שוב 🙏');
+  }
+}
+
+function buildUserList(){
+  const el = document.getElementById('userList');
+  el.innerHTML='';
+  if(!USERS.length){
+    el.innerHTML = '<div class="user-list-empty">אין עדיין משתמשים קיימים</div>';
+    return;
+  }
+  USERS.forEach(u=>{
+    const d = document.createElement('div');
+    d.className = 'user-chip';
+    d.textContent = u.name;
+    d.onclick = ()=>{ setCurrentUser(u); document.getElementById('userOverlay').classList.remove('show'); };
+    el.appendChild(d);
+  });
+}
+
+function openUserPicker(){
+  document.getElementById('userOverlay').classList.add('show');
+  document.getElementById('newUserName').value='';
+  document.getElementById('userWarning').style.display='none';
+  selectedAvatarEmoji = AVATAR_EMOJIS[0];
+  selectedAvatarImageUrl = null;
+  document.getElementById('avatarPreview').style.display='none';
+  document.getElementById('avatarUploadHint').style.display='block';
+  buildAvatarEmojiPicker();
+  fetchUsers().then(buildUserList);
+}
+
+async function createUser(){
+  const warn = document.getElementById('userWarning');
+  const name = document.getElementById('newUserName').value.trim();
+  warn.style.display='none';
+  if(!name){ warn.textContent='צריך למלא שם 😊'; warn.style.display='block'; return; }
+
+  const avatar_type = selectedAvatarImageUrl ? 'image' : 'emoji';
+  const avatar_value = selectedAvatarImageUrl || selectedAvatarEmoji;
+
+  try{
+    const res = await fetch('/api/users', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, avatar_type, avatar_value}),
+    });
+    if(!res.ok) throw new Error('user creation failed');
+    const user = await res.json();
+    setCurrentUser(user);
+    document.getElementById('userOverlay').classList.remove('show');
+  }catch(e){
+    console.warn('נכשלה יצירת משתמש', e);
+    warn.textContent='משהו השתבש, נסו שוב 🙏'; warn.style.display='block';
   }
 }
 
@@ -812,11 +968,10 @@ async function loadComments(postId){
 async function submitComment(){
   if(!currentPost) return;
   const warn = document.getElementById('commentWarning');
-  const author = document.getElementById('cAuthor').value.trim();
+  const author = currentUser().name;
   const body = document.getElementById('cBody').value.trim();
   warn.style.display = 'none';
 
-  if(!author){ warn.textContent='צריך שם כדי להגיב 😊'; warn.style.display='block'; return; }
   if(!body){ warn.textContent='כתבו תגובה לפני השליחה'; warn.style.display='block'; return; }
 
   const postId = currentPost.id;
@@ -1143,8 +1298,7 @@ let submitting = false;
 async function submitPost(btn){
   if(submitting) return; // prevent double-submit → duplicate posts
   if(processingMedia){ alert('רגע, הסרטון עדיין בעיבוד… נסו שוב בעוד כמה שניות 🙏'); return; }
-  const author = document.getElementById('pAuthor').value.trim();
-  if(!author){ alert('צריך למלא את השם שלך 😊'); return; }
+  const author = currentUser().name;
   const title = document.getElementById('pTitle').value.trim();
   if(!title){ alert('צריך כותרת לפרסום 😊'); return; }
   const description = document.getElementById('pDesc').value.trim() || 'ללא תיאור';
@@ -1175,7 +1329,7 @@ async function submitPost(btn){
   }
 
   closeModal();
-  // reset form (keep author name for convenience)
+  // reset form
   ['pTitle','pDesc','pLoc'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('pPrice').selectedIndex = 0;
   selectedEmoji=EMOJIS[0]; buildEmojiPicker();
@@ -1193,6 +1347,11 @@ function escapeHtml(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','
   await fetchPosts();
   render();
   openPostFromHash();
+  if(currentUser()){
+    renderAvatar();
+  }else{
+    openUserPicker();
+  }
 })();
 window.addEventListener('hashchange', openPostFromHash);
 
