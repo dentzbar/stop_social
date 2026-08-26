@@ -67,3 +67,36 @@ create index if not exists messages_conversation_idx
   on messages (least(sender_id, recipient_id), greatest(sender_id, recipient_id), created_at);
 create index if not exists messages_unread_idx
   on messages (recipient_id, read_at);
+
+-- migration: user groups — a group has a chat and its own posts feed
+create table if not exists groups (
+  id serial primary key,
+  name text not null unique,
+  description text not null default '',
+  emoji text not null default '👥',
+  created_by integer references users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists group_members (
+  group_id integer not null references groups(id) on delete cascade,
+  user_id integer not null references users(id) on delete cascade,
+  joined_at timestamptz not null default now(),
+  primary key (group_id, user_id)
+);
+
+create index if not exists group_members_user_idx on group_members (user_id);
+
+create table if not exists group_messages (
+  id serial primary key,
+  group_id integer not null references groups(id) on delete cascade,
+  sender_id integer not null references users(id) on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists group_messages_group_idx on group_messages (group_id, created_at);
+
+-- posts can belong to a group; null group_id = public feed
+alter table posts add column if not exists group_id integer references groups(id) on delete cascade;
+create index if not exists posts_group_idx on posts (group_id, created_at desc);

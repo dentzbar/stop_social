@@ -275,6 +275,14 @@
   .user-list-empty{color:var(--muted);font-size:14px;padding:9px 12px}
   .user-divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:14px 0}
   .user-divider::before,.user-divider::after{content:'';flex:1;height:1px;background:var(--line)}
+  .user-row.multi{justify-content:space-between}
+  .user-row.multi .chk{
+    width:20px;height:20px;border-radius:6px;border:2px solid var(--line);flex:none;
+    display:grid;place-items:center;font-size:12px;color:#fff;transition:.12s;
+  }
+  .user-row.multi.sel .chk{background:var(--green);border-color:var(--green)}
+  .user-row.multi.sel{background:#eafaf0}
+
 
   /* ===== Messages ===== */
   #messagesOverlay{z-index:150}
@@ -317,6 +325,61 @@
     font-family:inherit;font-size:14px;background:#f7faf8;
   }
   .thread-form input:focus{outline:none;border-color:var(--green);background:#fff}
+
+  /* ===== Groups ===== */
+  #groupsOverlay{z-index:150}
+  #newGroupOverlay{z-index:170}
+  #groupOverlay{z-index:155}
+  #addMembersOverlay{z-index:175}
+  .group-row{
+    display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;transition:.15s;
+  }
+  .group-row:hover{background:#eafaf0}
+  .group-row .group-icon{
+    width:44px;height:44px;border-radius:14px;flex:none;display:grid;place-items:center;
+    background:#eafaf0;font-size:22px;
+  }
+  .group-row .group-info{flex:1;min-width:0;cursor:pointer}
+  .group-row .group-name{font-weight:700;font-size:15px}
+  .group-row .group-sub{
+    color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .group-row .btn{padding:7px 14px;font-size:13px;flex:none}
+  .group-badge{
+    background:#eafaf0;color:var(--green-dark);font-size:11px;font-weight:700;
+    padding:4px 9px;border-radius:20px;flex:none;
+  }
+  .group-tabs{display:flex;gap:8px;padding:12px 14px 0;flex:none}
+  .group-tab{
+    flex:1;text-align:center;padding:9px 12px;border-radius:12px;cursor:pointer;
+    font-size:14px;font-weight:600;background:#f7faf8;border:1.5px solid var(--line);transition:.12s;
+  }
+  .group-tab:hover{border-color:var(--green)}
+  .group-tab.active{background:var(--green);color:#fff;border-color:var(--green)}
+  .group-posts{display:flex;flex-direction:column;gap:10px;padding:14px}
+  .group-post{
+    display:flex;gap:12px;align-items:center;background:#f7faf8;border-radius:14px;
+    padding:10px;cursor:pointer;transition:.15s;
+  }
+  .group-post:hover{background:#eafaf0}
+  .group-post .gp-cover{
+    width:60px;height:60px;border-radius:12px;flex:none;overflow:hidden;
+    display:grid;place-items:center;font-size:26px;
+  }
+  .group-post .gp-cover img{width:100%;height:100%;object-fit:cover}
+  .group-post .gp-info{flex:1;min-width:0}
+  .group-post .gp-title{font-weight:700;font-size:15px}
+  .group-post .gp-sub{
+    color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .group-msg-row{display:flex;flex-direction:column;gap:2px;max-width:82%}
+  .group-msg-row.mine{align-self:flex-start}
+  .group-msg-row.theirs{align-self:flex-end}
+  .group-msg-author{font-size:11px;color:var(--muted);font-weight:600;padding:0 6px}
+  .group-scope-banner{
+    display:flex;align-items:center;gap:8px;background:#eafaf0;color:var(--green-dark);
+    border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600;margin-bottom:14px;
+  }
 
   /* ===== Post detail modal ===== */
   .post-modal{padding:0;overflow:hidden;display:flex;flex-direction:column}
@@ -473,6 +536,7 @@
 
     <div class="actions">
       <button class="btn btn-primary btn-sm" onclick="openModal()">＋ שתף מקום</button>
+      <div class="bell" id="groupsIcon" title="קבוצות" onclick="openGroups()">👥</div>
       <div class="bell" id="messagesIcon" title="הודעות" onclick="openMessages()">💬</div>
       <div class="bell-wrap">
         <div class="bell" id="msgBell" title="התראות" onclick="toggleNotifications(event)">
@@ -599,11 +663,90 @@
   </div>
 </div>
 
+<!-- Groups list -->
+<div class="overlay" id="groupsOverlay">
+  <div class="modal msg-modal">
+    <div class="msg-head">
+      <h2>קבוצות 👥</h2>
+      <button class="msg-new-btn" title="קבוצה חדשה" onclick="openNewGroup()">＋</button>
+      <button class="modal-close" style="position:static;box-shadow:none" onclick="closeGroups()">✕</button>
+    </div>
+    <div class="field" style="padding:12px 14px 0;margin:0">
+      <input id="groupSearch" type="text" placeholder="🔍 חיפוש קבוצה…" oninput="renderGroupList()">
+    </div>
+    <div class="msg-body" id="groupListBody"></div>
+  </div>
+</div>
+
+<!-- New group -->
+<div class="overlay" id="newGroupOverlay">
+  <div class="modal">
+    <h2>קבוצה חדשה 👥</h2>
+    <div class="hint">פתחו קבוצה, הזמינו חברים ושתפו מקומות רק ביניכם</div>
+    <div class="field">
+      <label>שם הקבוצה <span class="req">*</span></label>
+      <input id="gName" type="text" placeholder="לדוגמה: החברים מהצפון" maxlength="60"
+             onkeydown="if(event.key==='Enter')createGroup()">
+    </div>
+    <div class="field">
+      <label>תיאור</label>
+      <textarea id="gDesc" placeholder="על מה הקבוצה?" maxlength="300"></textarea>
+    </div>
+    <div class="field">
+      <label>אייקון</label>
+      <div class="emoji-pick" id="groupEmojiPick"></div>
+    </div>
+    <div class="field">
+      <label>הוספת חברים (אופציונלי)</label>
+      <input id="gMemberSearch" type="text" placeholder="🔍 חיפוש משתמש…" oninput="renderNewGroupMemberList()">
+      <div class="user-list" id="gMemberList" style="margin-top:8px"></div>
+    </div>
+    <div id="groupWarning" style="display:none;color:#c0392b;font-size:13px;margin-bottom:10px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost-modal" type="button" style="flex:1" onclick="closeNewGroup()">ביטול</button>
+      <button class="btn btn-primary" type="button" style="flex:1" onclick="createGroup()">יצירה 🚀</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add members to an existing group -->
+<div class="overlay" id="addMembersOverlay">
+  <div class="modal">
+    <h2>הוספת חברים 👥</h2>
+    <div class="field">
+      <input id="addMembersSearch" type="text" placeholder="🔍 חיפוש משתמש…" oninput="renderAddMembersList()">
+    </div>
+    <div class="user-list" id="addMembersList" style="max-height:320px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost-modal" type="button" style="flex:1" onclick="closeAddMembers()">ביטול</button>
+      <button class="btn btn-primary" type="button" style="flex:1" onclick="confirmAddMembers()">הוספה</button>
+    </div>
+  </div>
+</div>
+
+<!-- Single group: chat + posts -->
+<div class="overlay" id="groupOverlay">
+  <div class="modal msg-modal">
+    <div class="msg-head">
+      <button class="msg-back" onclick="closeGroup()">→</button>
+      <h2 id="groupTitle"></h2>
+      <button class="modal-close" style="position:static;box-shadow:none" onclick="closeGroup()">✕</button>
+    </div>
+    <div class="group-tabs">
+      <div class="group-tab active" id="groupTabChat" onclick="setGroupTab('chat')">💬 צ׳אט</div>
+      <div class="group-tab" id="groupTabPosts" onclick="setGroupTab('posts')">📍 מקומות</div>
+      <div class="group-tab" id="groupTabMembers" onclick="setGroupTab('members')">👥 חברים</div>
+    </div>
+    <div class="msg-body" id="groupBody"></div>
+  </div>
+</div>
+
 <!-- New post modal -->
 <div class="overlay" id="overlay">
   <div class="modal">
     <h2>שיתוף מקום חדש 📍</h2>
     <div class="hint">ביקרת במקום מגניב? שתף אותו עם השכונה!</div>
+    <div class="group-scope-banner" id="postScopeBanner" style="display:none"></div>
     <div class="field">
       <label>שם המקום <span class="req">*</span></label>
       <input id="pTitle" type="text" placeholder="לדוגמה: פארק הירקון">
@@ -717,10 +860,13 @@ const REACTIONS = [
 ];
 
 let POSTS = [];
+let activeGroup = null; // the group whose feed is showing in the main page, or null for the public feed
 
 async function fetchPosts(){
   try{
-    const res = await fetch('/api/posts');
+    // null activeGroup = the public feed; a group scopes the feed to that group's posts
+    const qs = activeGroup ? `?group_id=${activeGroup.id}` : '';
+    const res = await fetch(`/api/posts${qs}`);
     if(!res.ok) throw new Error('failed to load posts');
     POSTS = await res.json();
   }catch(e){
@@ -739,9 +885,12 @@ function currentUser(){
   try{ return JSON.parse(localStorage.getItem('stopUser')); }catch(e){ return null; }
 }
 function setCurrentUser(user){
+  const previous = currentUser();
   localStorage.setItem('stopUser', JSON.stringify(user));
   renderAvatar();
   startUnreadPolling();
+  // group membership is per user — a different identity must start from the public feed
+  if(activeGroup && (!previous || previous.id !== user.id)) showPublicFeed();
 }
 
 async function fetchUsers(){
@@ -1199,6 +1348,513 @@ function closeNewConversationPicker(){
   document.getElementById('newConvOverlay').classList.remove('show');
 }
 
+/* ===== Groups ===== */
+const GROUP_EMOJIS = ['👥','🏡','🍕','🌍','🎉','⚽','🎸','🧗','🚗','☕','🌊','🐾'];
+let GROUPS = [];
+let openGroupData = null;      // the group whose modal is open
+let groupTab = 'chat';
+let selectedGroupEmoji = GROUP_EMOJIS[0];
+
+async function fetchGroups(){
+  const user = currentUser();
+  try{
+    const qs = user ? `?user_id=${user.id}` : '';
+    const res = await fetch(`/api/groups${qs}`);
+    if(!res.ok) throw new Error('failed to load groups');
+    GROUPS = await res.json();
+  }catch(e){
+    console.warn('נכשלה טעינת קבוצות', e);
+    GROUPS = [];
+  }
+}
+
+async function openGroups(){
+  const user = currentUser();
+  if(!user){ openUserPicker(); return; }
+  document.getElementById('groupsOverlay').classList.add('show');
+  document.getElementById('groupSearch').value = '';
+  document.getElementById('groupListBody').innerHTML = '<div class="conv-empty">טוען קבוצות…</div>';
+  await fetchGroups();
+  renderGroupList();
+}
+
+function closeGroups(){
+  document.getElementById('groupsOverlay').classList.remove('show');
+}
+document.getElementById('groupsOverlay').addEventListener('click',e=>{ if(e.target.id==='groupsOverlay') closeGroups(); });
+
+function renderGroupList(){
+  const el = document.getElementById('groupListBody');
+  const q = document.getElementById('groupSearch').value.trim().toLowerCase();
+  const list = q ? GROUPS.filter(g=>g.name.toLowerCase().includes(q) || (g.description||'').toLowerCase().includes(q)) : GROUPS;
+
+  if(!list.length){
+    el.innerHTML = GROUPS.length
+      ? '<div class="conv-empty">לא נמצאו קבוצות תואמות</div>'
+      : '<div class="conv-empty">אין עדיין קבוצות. צרו את הראשונה עם ה-＋ 👥</div>';
+    return;
+  }
+
+  el.innerHTML = '';
+  list.forEach(g=>{
+    const d = document.createElement('div');
+    d.className = 'group-row';
+    d.innerHTML = `
+      <span class="group-icon">${escapeHtml(g.emoji || '👥')}</span>
+      <div class="group-info">
+        <div class="group-name">${escapeHtml(g.name)}</div>
+        <div class="group-sub">${g.member_count} חברים · ${g.post_count} מקומות${g.description ? ' · ' + escapeHtml(g.description) : ''}</div>
+      </div>
+      ${g.is_member
+        ? '<span class="group-badge">חבר ✓</span>'
+        : '<button class="btn btn-primary" type="button">הצטרפות</button>'}
+    `;
+    d.querySelector('.group-info').onclick = ()=>{
+      if(g.is_member) openGroup(g);
+      else toast('הצטרפו לקבוצה כדי לראות אותה 👥');
+    };
+    const joinBtn = d.querySelector('button.btn');
+    if(joinBtn) joinBtn.onclick = e=>{ e.stopPropagation(); joinGroup(g); };
+    el.appendChild(d);
+  });
+}
+
+async function joinGroup(g){
+  const user = currentUser();
+  if(!user) return;
+  try{
+    const res = await fetch(`/api/groups/${g.id}/members`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({user_id:user.id}),
+    });
+    if(!res.ok) throw new Error('join failed');
+  }catch(e){
+    console.warn('נכשלה הצטרפות לקבוצה', e);
+    toast('נכשלה ההצטרפות, נסו שוב 🙏');
+    return;
+  }
+  g.is_member = true;
+  g.member_count = (g.member_count||0) + 1;
+  renderGroupList();
+  toast(`הצטרפתם ל${g.name} 🎉`);
+  openGroup(g);
+}
+
+async function leaveGroup(g){
+  const user = currentUser();
+  if(!user) return;
+  try{
+    const res = await fetch(`/api/groups/${g.id}/members?user_id=${user.id}`, { method:'DELETE' });
+    if(!res.ok) throw new Error('leave failed');
+  }catch(e){
+    console.warn('נכשלה יציאה מהקבוצה', e);
+    toast('נכשלה היציאה מהקבוצה, נסו שוב 🙏');
+    return;
+  }
+  g.is_member = false;
+  g.member_count = Math.max(0, (g.member_count||1) - 1);
+  closeGroup();
+  if(activeGroup && activeGroup.id === g.id) showPublicFeed();
+  await fetchGroups();
+  renderGroupList();
+  toast(`יצאתם מ${g.name}`);
+}
+
+function buildGroupEmojiPicker(){
+  const el = document.getElementById('groupEmojiPick');
+  el.innerHTML = '';
+  GROUP_EMOJIS.forEach(e=>{
+    const s = document.createElement('span');
+    s.textContent = e;
+    if(e===selectedGroupEmoji) s.className = 'sel';
+    s.onclick = ()=>{ selectedGroupEmoji = e; buildGroupEmojiPicker(); };
+    el.appendChild(s);
+  });
+}
+
+let selectedNewGroupMemberIds = new Set();
+
+function renderNewGroupMemberList(){
+  const el = document.getElementById('gMemberList');
+  const user = currentUser();
+  const q = document.getElementById('gMemberSearch').value.trim().toLowerCase();
+  const candidates = USERS.filter(u=>u.id!==user.id && (!q || u.name.toLowerCase().includes(q)));
+  el.innerHTML = '';
+  if(!candidates.length){
+    el.innerHTML = '<div class="user-list-empty">לא נמצאו משתמשים תואמים</div>';
+    return;
+  }
+  candidates.forEach(u=>{
+    const sel = selectedNewGroupMemberIds.has(u.id);
+    const d = document.createElement('div');
+    d.className = 'user-row multi' + (sel ? ' sel' : '');
+    d.innerHTML = `
+      <span style="display:flex;align-items:center;gap:12px">
+        <span class="user-row-icon">${avatarHtml(u)}</span><span>${escapeHtml(u.name)}</span>
+      </span>
+      <span class="chk">${sel ? '✓' : ''}</span>
+    `;
+    d.onclick = ()=>{
+      if(selectedNewGroupMemberIds.has(u.id)) selectedNewGroupMemberIds.delete(u.id);
+      else selectedNewGroupMemberIds.add(u.id);
+      renderNewGroupMemberList();
+    };
+    el.appendChild(d);
+  });
+}
+
+async function openNewGroup(){
+  const user = currentUser();
+  if(!user){ openUserPicker(); return; }
+  document.getElementById('newGroupOverlay').classList.add('show');
+  document.getElementById('gName').value = '';
+  document.getElementById('gDesc').value = '';
+  document.getElementById('gMemberSearch').value = '';
+  document.getElementById('groupWarning').style.display = 'none';
+  selectedGroupEmoji = GROUP_EMOJIS[0];
+  selectedNewGroupMemberIds = new Set();
+  buildGroupEmojiPicker();
+  await fetchUsers();
+  renderNewGroupMemberList();
+}
+
+function closeNewGroup(){
+  document.getElementById('newGroupOverlay').classList.remove('show');
+}
+
+async function createGroup(){
+  const user = currentUser();
+  if(!user) return;
+  const warn = document.getElementById('groupWarning');
+  const name = document.getElementById('gName').value.trim();
+  const description = document.getElementById('gDesc').value.trim();
+  warn.style.display = 'none';
+  if(!name){ warn.textContent = 'צריך שם לקבוצה 😊'; warn.style.display = 'block'; return; }
+
+  let group;
+  try{
+    const res = await fetch('/api/groups', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, description, emoji:selectedGroupEmoji, created_by:user.id}),
+    });
+    if(res.status === 409){ warn.textContent = 'קבוצה בשם הזה כבר קיימת 🙃'; warn.style.display='block'; return; }
+    if(!res.ok) throw new Error('group creation failed');
+    group = await res.json();
+  }catch(e){
+    console.warn('נכשלה יצירת קבוצה', e);
+    warn.textContent = 'משהו השתבש, נסו שוב 🙏'; warn.style.display = 'block';
+    return;
+  }
+
+  const memberIds = [...selectedNewGroupMemberIds];
+  if(memberIds.length){
+    await Promise.all(memberIds.map(id=>
+      fetch(`/api/groups/${group.id}/members`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({user_id:id}),
+      }).catch(e=>console.warn('נכשלה הוספת חבר לקבוצה', e))
+    ));
+    group.member_count = (group.member_count||1) + memberIds.length;
+  }
+
+  closeNewGroup();
+  GROUPS.unshift(group);
+  renderGroupList();
+  openGroup(group);
+}
+
+/* --- single group: chat / posts / members --- */
+function openGroup(g){
+  openGroupData = g;
+  groupTab = 'chat';
+  document.getElementById('groupTitle').textContent = `${g.emoji || '👥'} ${g.name}`;
+  document.getElementById('groupOverlay').classList.add('show');
+  setGroupTab('chat');
+}
+
+function closeGroup(){
+  document.getElementById('groupOverlay').classList.remove('show');
+  openGroupData = null;
+}
+document.getElementById('groupOverlay').addEventListener('click',e=>{ if(e.target.id==='groupOverlay') closeGroup(); });
+
+function setGroupTab(tab){
+  groupTab = tab;
+  ['chat','posts','members'].forEach(t=>{
+    const el = document.getElementById('groupTab' + t[0].toUpperCase() + t.slice(1));
+    el.classList.toggle('active', t===tab);
+  });
+  if(tab==='chat') renderGroupChat();
+  else if(tab==='posts') renderGroupPosts();
+  else renderGroupMembers();
+}
+
+async function renderGroupChat(){
+  const user = currentUser();
+  const g = openGroupData;
+  const el = document.getElementById('groupBody');
+  el.innerHTML = '<div class="thread-list" id="groupThreadList"><div class="conv-empty">טוען…</div></div>';
+  let messages = [];
+  try{
+    const res = await fetch(`/api/groups/${g.id}/messages`);
+    if(!res.ok) throw new Error('failed to load group messages');
+    messages = await res.json();
+  }catch(e){
+    console.warn('נכשלה טעינת הודעות הקבוצה', e);
+    el.innerHTML = '<div class="conv-empty">נכשלה טעינת ההודעות 😕</div>';
+    return;
+  }
+  if(groupTab !== 'chat' || openGroupData !== g) return; // the user switched away while we were loading
+
+  const body = messages.length
+    ? messages.map(m=>`
+        <div class="group-msg-row ${m.sender_id===user.id?'mine':'theirs'}">
+          ${m.sender_id===user.id?'':`<span class="group-msg-author">${escapeHtml(m.sender_name)}</span>`}
+          <div class="thread-msg ${m.sender_id===user.id?'mine':'theirs'}">${escapeHtml(m.body)}</div>
+        </div>`).join('')
+    : '<div class="conv-empty">עדיין אין הודעות בקבוצה, כתבו את הראשונה 👋</div>';
+
+  el.innerHTML = `
+    <div class="thread-list" id="groupThreadList">${body}</div>
+    <div class="thread-form">
+      <input id="groupMsgInput" type="text" placeholder="כתבו הודעה לקבוצה…" maxlength="2000"
+             onkeydown="if(event.key==='Enter')sendGroupMessage()">
+      <button class="btn btn-primary" type="button" onclick="sendGroupMessage()">שלח</button>
+    </div>
+  `;
+  const list = document.getElementById('groupThreadList');
+  list.scrollTop = list.scrollHeight;
+}
+
+async function sendGroupMessage(){
+  const user = currentUser();
+  const g = openGroupData;
+  if(!user || !g) return;
+  const input = document.getElementById('groupMsgInput');
+  const body = input.value.trim();
+  if(!body) return;
+  input.value = '';
+  try{
+    const res = await fetch(`/api/groups/${g.id}/messages`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({sender_id:user.id, body}),
+    });
+    if(!res.ok) throw new Error('send failed');
+  }catch(e){
+    console.warn('נכשלה שליחת הודעה לקבוצה', e);
+    input.value = body;
+    return;
+  }
+  await renderGroupChat();
+}
+
+async function renderGroupPosts(){
+  const g = openGroupData;
+  const el = document.getElementById('groupBody');
+  el.innerHTML = '<div class="conv-empty">טוען מקומות…</div>';
+  let posts = [];
+  try{
+    const res = await fetch(`/api/posts?group_id=${g.id}`);
+    if(!res.ok) throw new Error('failed to load group posts');
+    posts = await res.json();
+  }catch(e){
+    console.warn('נכשלה טעינת מקומות הקבוצה', e);
+    el.innerHTML = '<div class="conv-empty">נכשלה טעינת המקומות 😕</div>';
+    return;
+  }
+  if(groupTab !== 'posts' || openGroupData !== g) return;
+
+  el.innerHTML = `
+    <div class="group-posts" id="groupPostsList"></div>
+    <div class="thread-form" style="justify-content:center">
+      <button class="btn btn-primary" type="button" onclick="openGroupFeed()">📍 פתיחת פיד הקבוצה</button>
+      <button class="btn btn-ghost-modal" type="button" onclick="shareToGroup()">＋ שיתוף מקום</button>
+    </div>
+  `;
+  const list = document.getElementById('groupPostsList');
+  if(!posts.length){
+    list.innerHTML = '<div class="conv-empty">אין עדיין מקומות בקבוצה. שתפו את הראשון 📍</div>';
+    return;
+  }
+  posts.forEach(p=>{
+    const coverSrc = p.media_type === 'video' ? p.poster_url : p.image_url;
+    const d = document.createElement('div');
+    d.className = 'group-post';
+    d.innerHTML = `
+      <div class="gp-cover" style="background:${p.color}">
+        ${coverSrc ? `<img src="${coverSrc}">` : escapeHtml(p.emoji)}
+      </div>
+      <div class="gp-info">
+        <div class="gp-title">${escapeHtml(p.title)}</div>
+        <div class="gp-sub">📍 ${escapeHtml(p.location)} · ${escapeHtml(p.author || 'אנונימי')}</div>
+      </div>
+      <span class="group-badge">${p.price}</span>
+    `;
+    d.onclick = ()=>{
+      if(!POSTS.some(x=>x.id===p.id)) POSTS.push(p); // so sharePost/openPost can resolve it later
+      openPost(p);
+    };
+    list.appendChild(d);
+  });
+}
+
+async function renderGroupMembers(){
+  const g = openGroupData;
+  const el = document.getElementById('groupBody');
+  el.innerHTML = '<div class="conv-empty">טוען חברים…</div>';
+  let members = [];
+  try{
+    const res = await fetch(`/api/groups/${g.id}/members`);
+    if(!res.ok) throw new Error('failed to load members');
+    members = await res.json();
+  }catch(e){
+    console.warn('נכשלה טעינת חברי הקבוצה', e);
+    el.innerHTML = '<div class="conv-empty">נכשלה טעינת החברים 😕</div>';
+    return;
+  }
+  if(groupTab !== 'members' || openGroupData !== g) return;
+
+  const user = currentUser();
+  el.innerHTML = `
+    <div class="user-list" style="border:none;margin:14px;max-height:none" id="groupMembersList"></div>
+    <div class="thread-form" style="justify-content:center">
+      <button class="btn btn-primary" type="button" onclick="openAddMembers()">＋ הוספת חברים</button>
+      <button class="btn btn-ghost-modal" type="button" onclick="leaveGroup(openGroupData)">יציאה מהקבוצה</button>
+    </div>
+  `;
+  const list = document.getElementById('groupMembersList');
+  members.forEach(m=>{
+    const d = document.createElement('div');
+    d.className = 'user-row';
+    d.innerHTML = `
+      <span class="user-row-icon">${avatarHtml(m)}</span>
+      <span style="flex:1">${escapeHtml(m.name)}</span>
+      ${m.id===g.created_by ? '<span class="group-badge">מנהל</span>' : ''}
+    `;
+    if(m.id !== user.id){
+      d.style.cursor = 'pointer';
+      d.onclick = ()=>{
+        closeGroup(); closeGroups();
+        openMessages().then(()=>openThread({user_id:m.id, name:m.name, avatar_type:m.avatar_type, avatar_value:m.avatar_value}));
+      };
+    }
+    list.appendChild(d);
+  });
+  currentGroupMemberIds = new Set(members.map(m=>m.id));
+}
+
+/* --- add members to an existing group --- */
+let currentGroupMemberIds = new Set();
+let selectedAddMemberIds = new Set();
+
+function renderAddMembersList(){
+  const el = document.getElementById('addMembersList');
+  const q = document.getElementById('addMembersSearch').value.trim().toLowerCase();
+  const candidates = USERS.filter(u=>!currentGroupMemberIds.has(u.id) && (!q || u.name.toLowerCase().includes(q)));
+  el.innerHTML = '';
+  if(!candidates.length){
+    el.innerHTML = '<div class="user-list-empty">כל המשתמשים כבר בקבוצה 🎉</div>';
+    return;
+  }
+  candidates.forEach(u=>{
+    const sel = selectedAddMemberIds.has(u.id);
+    const d = document.createElement('div');
+    d.className = 'user-row multi' + (sel ? ' sel' : '');
+    d.innerHTML = `
+      <span style="display:flex;align-items:center;gap:12px">
+        <span class="user-row-icon">${avatarHtml(u)}</span><span>${escapeHtml(u.name)}</span>
+      </span>
+      <span class="chk">${sel ? '✓' : ''}</span>
+    `;
+    d.onclick = ()=>{
+      if(selectedAddMemberIds.has(u.id)) selectedAddMemberIds.delete(u.id);
+      else selectedAddMemberIds.add(u.id);
+      renderAddMembersList();
+    };
+    el.appendChild(d);
+  });
+}
+
+async function openAddMembers(){
+  document.getElementById('addMembersOverlay').classList.add('show');
+  document.getElementById('addMembersSearch').value = '';
+  selectedAddMemberIds = new Set();
+  await fetchUsers();
+  renderAddMembersList();
+}
+
+function closeAddMembers(){
+  document.getElementById('addMembersOverlay').classList.remove('show');
+}
+document.getElementById('addMembersOverlay').addEventListener('click', e=>{ if(e.target.id==='addMembersOverlay') closeAddMembers(); });
+
+async function confirmAddMembers(){
+  const g = openGroupData;
+  if(!g) return;
+  const memberIds = [...selectedAddMemberIds];
+  if(!memberIds.length){ closeAddMembers(); return; }
+
+  try{
+    await Promise.all(memberIds.map(id=>
+      fetch(`/api/groups/${g.id}/members`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({user_id:id}),
+      })
+    ));
+  }catch(e){
+    console.warn('נכשלה הוספת חברים', e);
+    toast('נכשלה הוספת חברים, נסו שוב 🙏');
+    return;
+  }
+
+  g.member_count = (g.member_count||0) + memberIds.length;
+  closeAddMembers();
+  toast('החברים נוספו לקבוצה 🎉');
+  if(groupTab==='members') renderGroupMembers();
+}
+
+/* --- switching the main feed between the public feed and a group feed --- */
+async function openGroupFeed(){
+  const g = openGroupData;
+  if(!g) return;
+  activeGroup = g;
+  closeGroup(); closeGroups();
+  activeCat = 'all';
+  document.getElementById('searchInput').value = '';
+  await fetchPosts();
+  buildCats(); render();
+  toast(`מציג את המקומות של ${g.name} 👥`);
+}
+
+async function showPublicFeed(){
+  activeGroup = null;
+  await fetchPosts();
+  render();
+}
+
+function shareToGroup(){
+  const g = openGroupData;
+  if(!g) return;
+  activeGroup = g;
+  closeGroup(); closeGroups();
+  openModal();
+}
+
+function renderPostScopeBanner(){
+  const el = document.getElementById('postScopeBanner');
+  if(activeGroup){
+    el.innerHTML = `<span>👥</span><span>המקום ישותף בקבוצה <b>${escapeHtml(activeGroup.name)}</b></span>`;
+    el.style.display = 'flex';
+  }else{
+    el.style.display = 'none';
+  }
+}
+
 function openPostFromHash(){
   const m = /^#post-(.+)$/.exec(location.hash);
   if(!m) return;
@@ -1270,13 +1926,19 @@ function render(){
 
   // header
   const cat = CATEGORIES.find(c=>c.id===activeCat);
-  document.getElementById('feedTitle').textContent = activeCat==='all' ? 'כל המקומות' : `${cat.emoji} ${cat.name}`;
-  document.getElementById('feedSub').textContent = q ? `תוצאות חיפוש עבור "${q}" · ${list.length} מקומות` : `${list.length} מקומות באזור שלך`;
+  const scopePrefix = activeGroup ? `${activeGroup.emoji || '👥'} ${activeGroup.name} · ` : '';
+  document.getElementById('feedTitle').textContent =
+    scopePrefix + (activeCat==='all' ? 'כל המקומות' : `${cat.emoji} ${cat.name}`);
+  document.getElementById('feedSub').innerHTML = q
+    ? `תוצאות חיפוש עבור "${escapeHtml(q)}" · ${list.length} מקומות`
+    : (activeGroup
+        ? `${list.length} מקומות בקבוצה · <a href="#" onclick="event.preventDefault();showPublicFeed()">חזרה לפיד הכללי</a>`
+        : `${list.length} מקומות באזור שלך`);
 
   const grid = document.getElementById('grid');
   grid.innerHTML='';
   if(list.length===0){
-    grid.innerHTML = `<div class="empty"><div class="big">🔍</div><b>לא נמצאו מקומות</b><br>נסה חיפוש אחר או שתף מקום חדש!</div>`;
+    grid.innerHTML = `<div class="empty"><div class="big">🔍</div><b>לא נמצאו מקומות</b><br>${activeGroup?'אין עדיין מקומות בקבוצה — שתפו את הראשון!':'נסה חיפוש אחר או שתף מקום חדש!'}</div>`;
     return;
   }
   list.forEach(p=>{
@@ -1486,15 +2148,17 @@ function setSort(mode, el){
   render();
 }
 
-function resetFeed(){
-  activeCat='all'; sortMode='new';
+async function resetFeed(){
+  const wasInGroup = !!activeGroup;
+  activeGroup = null; activeCat='all'; sortMode='new';
   document.getElementById('searchInput').value='';
   document.querySelectorAll('#sortChips .chip').forEach((c,i)=>c.classList.toggle('active',i===0));
+  if(wasInGroup) await fetchPosts();
   buildCats(); render();
 }
 
 /* ===== Modal ===== */
-function openModal(){ document.getElementById('overlay').classList.add('show'); }
+function openModal(){ renderPostScopeBanner(); document.getElementById('overlay').classList.add('show'); }
 function closeModal(){ document.getElementById('overlay').classList.remove('show'); resetImagePicker(); }
 document.getElementById('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeModal(); });
 
@@ -1802,7 +2466,7 @@ async function submitPost(btn){
     const res = await fetch('/api/posts', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({title,description,category,price,location,author,emoji:selectedEmoji,color,image_url,media_type,poster_url}),
+      body: JSON.stringify({title,description,category,price,location,author,emoji:selectedEmoji,color,image_url,media_type,poster_url,group_id:activeGroup?activeGroup.id:null}),
     });
     if(!res.ok) throw new Error('post creation failed');
     const post = await res.json();
