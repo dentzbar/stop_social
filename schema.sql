@@ -100,3 +100,6 @@ create index if not exists group_messages_group_idx on group_messages (group_id,
 -- posts can belong to a group; null group_id = public feed
 alter table posts add column if not exists group_id integer references groups(id) on delete cascade;
 create index if not exists posts_group_idx on posts (group_id, created_at desc);
+
+-- migration: optional cover image for a group (shown instead of the emoji icon when set)
+alter table groups add column if not exists image_url text;

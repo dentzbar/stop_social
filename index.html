@@ -331,14 +331,16 @@
   #newGroupOverlay{z-index:170}
   #groupOverlay{z-index:155}
   #addMembersOverlay{z-index:175}
+  #editGroupImageOverlay{z-index:180}
   .group-row{
     display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;transition:.15s;
   }
   .group-row:hover{background:#eafaf0}
   .group-row .group-icon{
     width:44px;height:44px;border-radius:14px;flex:none;display:grid;place-items:center;
-    background:#eafaf0;font-size:22px;
+    background:#eafaf0;font-size:22px;overflow:hidden;
   }
+  .group-row .group-icon img{width:100%;height:100%;object-fit:cover}
   .group-row .group-info{flex:1;min-width:0;cursor:pointer}
   .group-row .group-name{font-weight:700;font-size:15px}
   .group-row .group-sub{
@@ -697,6 +699,15 @@
       <div class="emoji-pick" id="groupEmojiPick"></div>
     </div>
     <div class="field">
+      <label>תמונת קבוצה (אופציונלי)</label>
+      <label class="upload-box" id="groupImageUploadBox" for="groupImage">
+        <span id="groupImageUploadHint">📷 לחצו כדי לבחור תמונה</span>
+        <img id="groupImagePreview" style="display:none">
+      </label>
+      <input id="groupImage" type="file" accept="image/*" style="display:none" onchange="onGroupImagePicked(event)">
+      <div id="groupImageWarning" style="display:none;color:#c0392b;font-size:13px;margin-top:6px"></div>
+    </div>
+    <div class="field">
       <label>הוספת חברים (אופציונלי)</label>
       <input id="gMemberSearch" type="text" placeholder="🔍 חיפוש משתמש…" oninput="renderNewGroupMemberList()">
       <div class="user-list" id="gMemberList" style="margin-top:8px"></div>
@@ -720,6 +731,26 @@
     <div class="modal-actions">
       <button class="btn btn-ghost-modal" type="button" style="flex:1" onclick="closeAddMembers()">ביטול</button>
       <button class="btn btn-primary" type="button" style="flex:1" onclick="confirmAddMembers()">הוספה</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit an existing group's image -->
+<div class="overlay" id="editGroupImageOverlay">
+  <div class="modal">
+    <h2>תמונת קבוצה 🖼️</h2>
+    <div class="field">
+      <label class="upload-box" id="editGroupImageUploadBox" for="editGroupImage" style="height:160px">
+        <span id="editGroupImageUploadHint">📷 לחצו כדי לבחור תמונה</span>
+        <img id="editGroupImagePreview" style="display:none">
+      </label>
+      <input id="editGroupImage" type="file" accept="image/*" style="display:none" onchange="onEditGroupImagePicked(event)">
+      <div id="editGroupImageWarning" style="display:none;color:#c0392b;font-size:13px;margin-top:6px"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost-modal" type="button" style="flex:1" onclick="removeGroupImage()">הסרת תמונה</button>
+      <button class="btn btn-ghost-modal" type="button" style="flex:1" onclick="closeEditGroupImage()">ביטול</button>
+      <button class="btn btn-primary" type="button" style="flex:1" onclick="saveGroupImage()">שמירה</button>
     </div>
   </div>
 </div>
@@ -1351,6 +1382,11 @@ function closeNewConversationPicker(){
 /* ===== Groups ===== */
 const GROUP_EMOJIS = ['👥','🏡','🍕','🌍','🎉','⚽','🎸','🧗','🚗','☕','🌊','🐾'];
 let GROUPS = [];
+
+function groupIconHtml(g){
+  if(g.image_url) return `<img src="${g.image_url}">`;
+  return escapeHtml(g.emoji || '👥');
+}
 let openGroupData = null;      // the group whose modal is open
 let groupTab = 'chat';
 let selectedGroupEmoji = GROUP_EMOJIS[0];
@@ -1400,7 +1436,7 @@ function renderGroupList(){
     const d = document.createElement('div');
     d.className = 'group-row';
     d.innerHTML = `
-      <span class="group-icon">${escapeHtml(g.emoji || '👥')}</span>
+      <span class="group-icon">${groupIconHtml(g)}</span>
       <div class="group-info">
         <div class="group-name">${escapeHtml(g.name)}</div>
         <div class="group-sub">${g.member_count} חברים · ${g.post_count} מקומות${g.description ? ' · ' + escapeHtml(g.description) : ''}</div>
@@ -1504,6 +1540,34 @@ function renderNewGroupMemberList(){
   });
 }
 
+let selectedGroupImageUrl = null;
+
+function resetGroupImagePicker(){
+  selectedGroupImageUrl = null;
+  document.getElementById('groupImage').value = '';
+  document.getElementById('groupImageUploadHint').style.display = 'block';
+  document.getElementById('groupImageWarning').style.display = 'none';
+  const preview = document.getElementById('groupImagePreview');
+  preview.src = ''; preview.style.display = 'none';
+}
+
+async function onGroupImagePicked(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const warn = document.getElementById('groupImageWarning');
+  warn.style.display = 'none';
+  try{
+    selectedGroupImageUrl = await uploadToBlob(file);
+    const preview = document.getElementById('groupImagePreview');
+    preview.src = selectedGroupImageUrl;
+    preview.style.display = 'block';
+    document.getElementById('groupImageUploadHint').style.display = 'none';
+  }catch(e){
+    console.warn('נכשלה העלאת תמונת קבוצה', e);
+    warn.textContent = 'נכשלה העלאת התמונה, נסו שוב 🙏'; warn.style.display = 'block';
+  }
+}
+
 async function openNewGroup(){
   const user = currentUser();
   if(!user){ openUserPicker(); return; }
@@ -1514,6 +1578,7 @@ async function openNewGroup(){
   document.getElementById('groupWarning').style.display = 'none';
   selectedGroupEmoji = GROUP_EMOJIS[0];
   selectedNewGroupMemberIds = new Set();
+  resetGroupImagePicker();
   buildGroupEmojiPicker();
   await fetchUsers();
   renderNewGroupMemberList();
@@ -1537,7 +1602,7 @@ async function createGroup(){
     const res = await fetch('/api/groups', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({name, description, emoji:selectedGroupEmoji, created_by:user.id}),
+      body: JSON.stringify({name, description, emoji:selectedGroupEmoji, image_url:selectedGroupImageUrl, created_by:user.id}),
     });
     if(res.status === 409){ warn.textContent = 'קבוצה בשם הזה כבר קיימת 🙃'; warn.style.display='block'; return; }
     if(!res.ok) throw new Error('group creation failed');
@@ -1570,7 +1635,8 @@ async function createGroup(){
 function openGroup(g){
   openGroupData = g;
   groupTab = 'chat';
-  document.getElementById('groupTitle').textContent = `${g.emoji || '👥'} ${g.name}`;
+  document.getElementById('groupTitle').innerHTML =
+    `<span class="group-icon" style="width:28px;height:28px;border-radius:9px;font-size:16px;display:inline-grid;vertical-align:middle;margin-inline-end:6px">${groupIconHtml(g)}</span>${escapeHtml(g.name)}`;
   document.getElementById('groupOverlay').classList.add('show');
   setGroupTab('chat');
 }
@@ -1719,10 +1785,12 @@ async function renderGroupMembers(){
   if(groupTab !== 'members' || openGroupData !== g) return;
 
   const user = currentUser();
+  const canEditImage = g.created_by === user.id;
   el.innerHTML = `
     <div class="user-list" style="border:none;margin:14px;max-height:none" id="groupMembersList"></div>
-    <div class="thread-form" style="justify-content:center">
+    <div class="thread-form" style="justify-content:center;flex-wrap:wrap">
       <button class="btn btn-primary" type="button" onclick="openAddMembers()">＋ הוספת חברים</button>
+      ${canEditImage ? '<button class="btn btn-ghost-modal" type="button" onclick="openEditGroupImage()">🖼️ תמונת קבוצה</button>' : ''}
       <button class="btn btn-ghost-modal" type="button" onclick="leaveGroup(openGroupData)">יציאה מהקבוצה</button>
     </div>
   `;
@@ -1816,6 +1884,74 @@ async function confirmAddMembers(){
   closeAddMembers();
   toast('החברים נוספו לקבוצה 🎉');
   if(groupTab==='members') renderGroupMembers();
+}
+
+/* --- edit an existing group's image --- */
+let editGroupImageUrl = null;
+
+function openEditGroupImage(){
+  const g = openGroupData;
+  if(!g) return;
+  editGroupImageUrl = g.image_url || null;
+  document.getElementById('editGroupImageOverlay').classList.add('show');
+  document.getElementById('editGroupImageWarning').style.display = 'none';
+  document.getElementById('editGroupImage').value = '';
+  const preview = document.getElementById('editGroupImagePreview');
+  const hint = document.getElementById('editGroupImageUploadHint');
+  if(editGroupImageUrl){ preview.src = editGroupImageUrl; preview.style.display = 'block'; hint.style.display = 'none'; }
+  else{ preview.style.display = 'none'; hint.style.display = 'block'; }
+}
+
+function closeEditGroupImage(){
+  document.getElementById('editGroupImageOverlay').classList.remove('show');
+}
+document.getElementById('editGroupImageOverlay').addEventListener('click', e=>{ if(e.target.id==='editGroupImageOverlay') closeEditGroupImage(); });
+
+async function onEditGroupImagePicked(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const warn = document.getElementById('editGroupImageWarning');
+  warn.style.display = 'none';
+  try{
+    editGroupImageUrl = await uploadToBlob(file);
+    const preview = document.getElementById('editGroupImagePreview');
+    preview.src = editGroupImageUrl;
+    preview.style.display = 'block';
+    document.getElementById('editGroupImageUploadHint').style.display = 'none';
+  }catch(e){
+    console.warn('נכשלה העלאת תמונת קבוצה', e);
+    warn.textContent = 'נכשלה העלאת התמונה, נסו שוב 🙏'; warn.style.display = 'block';
+  }
+}
+
+function removeGroupImage(){
+  editGroupImageUrl = null;
+  document.getElementById('editGroupImagePreview').style.display = 'none';
+  document.getElementById('editGroupImageUploadHint').style.display = 'block';
+}
+
+async function saveGroupImage(){
+  const g = openGroupData;
+  if(!g) return;
+  const warn = document.getElementById('editGroupImageWarning');
+  warn.style.display = 'none';
+  try{
+    const res = await fetch('/api/groups', {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id:g.id, image_url:editGroupImageUrl}),
+    });
+    if(!res.ok) throw new Error('group image update failed');
+    const updated = await res.json();
+    g.image_url = updated.image_url;
+  }catch(e){
+    console.warn('נכשל עדכון תמונת קבוצה', e);
+    warn.textContent = 'משהו השתבש, נסו שוב 🙏'; warn.style.display = 'block';
+    return;
+  }
+  closeEditGroupImage();
+  document.getElementById('groupTitle').innerHTML =
+    `<span class="group-icon" style="width:28px;height:28px;border-radius:9px;font-size:16px;display:inline-grid;vertical-align:middle;margin-inline-end:6px">${groupIconHtml(g)}</span>${escapeHtml(g.name)}`;
 }
 
 /* --- switching the main feed between the public feed and a group feed --- */
