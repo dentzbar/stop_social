@@ -40,6 +40,33 @@
 
   .app{ display:flex; height:100vh; height:100dvh; width:100vw; }
 
+  /* ===== Splash / loading ===== */
+  .splash{
+    position:fixed; inset:0; z-index:200; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:18px; text-align:center;
+    background:radial-gradient(circle at 50% 45%, #5a1f5e 0%, var(--wp-bg) 70%);
+    opacity:1; transition:opacity .5s ease;
+  }
+  .splash.fade-out{ opacity:0; pointer-events:none; }
+  .splash .mark{
+    width:84px; height:84px; border-radius:22px; background:#fff; color:var(--wp-bg);
+    display:grid; place-items:center; font-weight:800; font-size:44px;
+    transform:scale(.4); opacity:0; animation:splash-grow .6s cubic-bezier(.22,.9,.35,1) forwards;
+    box-shadow:0 10px 30px rgba(0,0,0,.3);
+  }
+  @keyframes splash-grow{
+    0%{ transform:scale(.4); opacity:0; }
+    100%{ transform:scale(1); opacity:1; }
+  }
+  .spinner{
+    width:34px; height:34px; border-radius:50%;
+    border:3px solid rgba(255,255,255,.25); border-top-color:#fff;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .splash .splash-text{ color:var(--wp-text); font-size:14px; }
+  body.splash-active{ overflow:hidden; height:100vh; height:100dvh; }
+
   /* ===== Sidebar ===== */
   .sidebar{
     width:var(--sidebar-w); flex:0 0 var(--sidebar-w);
@@ -231,6 +258,13 @@
 </style>
 </head>
 <body>
+
+<!-- ===== Splash / loading ===== -->
+<div class="splash" id="splash">
+  <div class="mark">P</div>
+  <div class="spinner"></div>
+  <div class="splash-text">טוען אנשי קשר וערוצים…</div>
+</div>
 
 <div class="app">
   <!-- ===== Sidebar ===== -->
@@ -902,13 +936,25 @@ document.querySelectorAll('.overlay').forEach(ov=>{
   ov.addEventListener('click', e=>{ if(e.target===ov) ov.classList.remove('show'); });
 });
 
-(function init(){
+function hideSplash(){
+  const splash = document.getElementById('splash');
+  if(!splash) return;
+  splash.classList.add('fade-out');
+  document.body.classList.remove('splash-active');
+  setTimeout(()=>splash.remove(), 550);
+}
+
+(async function init(){
+  document.body.classList.add('splash-active');
   renderMe();
   const user = currentUser();
   if(!user){
     openIdentityPicker();
+    hideSplash();
+    return;
   }
-  loadSidebar();
+  await loadSidebar();
+  hideSplash();
 })();
 </script>
 </body>
