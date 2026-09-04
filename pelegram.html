@@ -222,8 +222,10 @@
   @media (max-width: 760px){
     :root{ --sidebar-w: 82vw; }
     .app{ position:relative; }
-    .sidebar{ position:fixed; inset:0 auto 0 0; z-index:60; transform:translateX(100%); transition:transform .2s; }
-    html[dir="rtl"] .sidebar{ transform:translateX(100%); }
+    .sidebar{
+      position:fixed; top:0; bottom:0; inset-inline-end:0; width:var(--sidebar-w);
+      z-index:60; transform:translateX(100%); transition:transform .2s;
+    }
     .sidebar.open{ transform:translateX(0); }
     .menu-btn{ display:inline-flex !important; }
     .mobile-topbar{
