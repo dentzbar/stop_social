@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIj4KICA8cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjgwIiBmaWxsPSIjNDUxYTRhIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1OCUiIGZvbnQtc2l6ZT0iMjYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmZmIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+UDwvdGV4dD4KPC9zdmc+Cg==">
+<link rel="icon" type="image/png" href="assets/pelegram-icon.png">
 <style>
   :root{
     --wp-bg:#3f0e40;
@@ -49,11 +49,11 @@
   }
   .splash.fade-out{ opacity:0; pointer-events:none; }
   .splash .mark{
-    width:84px; height:84px; border-radius:22px; background:#fff; color:var(--wp-bg);
-    display:grid; place-items:center; font-weight:800; font-size:44px;
+    width:84px; height:84px; border-radius:22px; overflow:hidden;
     transform:scale(.4); opacity:0; animation:splash-grow .6s cubic-bezier(.22,.9,.35,1) forwards;
     box-shadow:0 10px 30px rgba(0,0,0,.3);
   }
+  .splash .mark img{ width:100%; height:100%; object-fit:cover; }
   @keyframes splash-grow{
     0%{ transform:scale(.4); opacity:0; }
     100%{ transform:scale(1); opacity:1; }
@@ -79,9 +79,9 @@
   }
   .wp-title{ display:flex; align-items:center; gap:8px; font-weight:800; font-size:19px; color:#fff; cursor:pointer; }
   .wp-title .badge{
-    width:28px;height:28px;border-radius:8px;background:#fff;color:var(--wp-bg);
-    display:grid;place-items:center;font-weight:800;font-size:15px;flex:0 0 auto;
+    width:28px;height:28px;border-radius:8px;overflow:hidden;flex:0 0 auto;
   }
+  .wp-title .badge img{ width:100%;height:100%;object-fit:cover; }
   .home-link{
     font-size:12px; color:var(--wp-text-dim); border:1px solid rgba(255,255,255,.25);
     border-radius:14px; padding:4px 10px; cursor:pointer; white-space:nowrap;
@@ -285,7 +285,7 @@
 
 <!-- ===== Splash / loading ===== -->
 <div class="splash" id="splash">
-  <div class="mark">P</div>
+  <div class="mark"><img src="assets/pelegram-icon.png" alt=""></div>
   <div class="spinner"></div>
   <div class="splash-text">טוען אנשי קשר וערוצים…</div>
 </div>
@@ -295,7 +295,7 @@
   <aside class="sidebar" id="sidebar">
     <div class="wp-head">
       <div class="wp-title" onclick="showWelcome()">
-        <span class="badge">P</span>
+        <span class="badge"><img src="assets/pelegram-icon.png" alt=""></span>
         Pelegram
       </div>
       <a class="home-link" href="/">STOP ←</a>

@@ -540,7 +540,9 @@
       <button class="btn btn-primary btn-sm" onclick="openModal()">＋ שתף מקום</button>
       <div class="bell" id="groupsIcon" title="קבוצות" onclick="openGroups()">👥</div>
       <div class="bell" id="messagesIcon" title="הודעות" onclick="openMessages()">💬</div>
-      <a class="bell" id="pelegramIcon" title="Pelegram" href="/pelegram">📨</a>
+      <a class="bell" id="pelegramIcon" title="Pelegram" href="/pelegram" style="overflow:hidden;padding:0">
+        <img src="assets/pelegram-icon.png" alt="Pelegram" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+      </a>
       <div class="bell-wrap">
         <div class="bell" id="msgBell" title="התראות" onclick="toggleNotifications(event)">
           🔔
