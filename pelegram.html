@@ -189,6 +189,15 @@
     align-items:center; justify-content:center; z-index:100; padding:20px;
   }
   .overlay.show{ display:flex; }
+  .icon-av img{ cursor:pointer; }
+  .image-viewer-overlay{ background:rgba(0,0,0,.85); padding:0; }
+  .image-viewer-img{
+    max-width:92vw; max-height:92vh; border-radius:8px; cursor:default;
+    box-shadow:0 10px 40px rgba(0,0,0,.5);
+  }
+  .image-viewer-close{
+    position:absolute; top:16px; inset-inline-end:20px; color:#fff; font-size:26px; z-index:1;
+  }
   .modal{
     background:#fff; border-radius:12px; width:100%; max-width:400px; max-height:80vh;
     display:flex; flex-direction:column; box-shadow:var(--shadow); overflow:hidden;
@@ -417,6 +426,12 @@
   </div>
 </div>
 
+<!-- ===== Image viewer ===== -->
+<div class="overlay image-viewer-overlay" id="imageViewerOverlay" onclick="closeImageViewer()">
+  <button class="modal-close image-viewer-close" onclick="closeImageViewer()">✕</button>
+  <img id="imageViewerImg" class="image-viewer-img" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
 <script>
 /* ===================== Shared identity (same as STOP) ===================== */
 function currentUser(){
@@ -435,12 +450,27 @@ const CHANNEL_EMOJIS = ['💬','🏡','🍕','🌍','🎉','⚽','🎸','🧗','
 
 function avatarHtml(user){
   if(!user) return '?';
-  if(user.avatar_type==='image' && user.avatar_value) return `<img src="${user.avatar_value}">`;
+  if(user.avatar_type==='image' && user.avatar_value){
+    const src = escapeHtml(user.avatar_value);
+    return `<img src="${src}" onclick="event.stopPropagation(); openImageViewer('${src}')">`;
+  }
   return escapeHtml(user.avatar_value || '🙂');
 }
 function channelIconHtml(g){
-  if(g.image_url) return `<img src="${g.image_url}">`;
+  if(g.image_url){
+    const src = escapeHtml(g.image_url);
+    return `<img src="${src}" onclick="event.stopPropagation(); openImageViewer('${src}')">`;
+  }
   return escapeHtml(g.emoji || '💬');
+}
+
+function openImageViewer(url){
+  document.getElementById('imageViewerImg').src = url;
+  document.getElementById('imageViewerOverlay').classList.add('show');
+}
+function closeImageViewer(){
+  document.getElementById('imageViewerOverlay').classList.remove('show');
+  document.getElementById('imageViewerImg').src = '';
 }
 
 let USERS = [];
