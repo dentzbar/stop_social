@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3f0e40">
+<title>Pelegram · הודעות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIj4KICA8cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjgwIiBmaWxsPSIjNDUxYTRhIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1OCUiIGZvbnQtc2l6ZT0iMjYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmZmIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiI+UDwvdGV4dD4KPC9zdmc+Cg==">
+<style>
+  :root{
+    --wp-bg:#3f0e40;
+    --wp-bg-hover:#350b36;
+    --wp-bg-active:#1164a3;
+    --wp-text:#d1c9d6;
+    --wp-text-dim:#b3a1b6;
+    --sidebar-w:260px;
+    --bg:#ffffff;
+    --ink:#1d1c1d;
+    --muted:#616061;
+    --line:#dedede;
+    --accent:#1164a3;
+    --accent-2:#007a5a;
+    --shadow:0 6px 22px rgba(0,0,0,.12);
+    --radius:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Rubik','Segoe UI',Tahoma,sans-serif;
+    background:var(--bg);color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  a{color:inherit;text-decoration:none}
+  img{max-width:100%;display:block}
+  button{font-family:inherit}
+
+  .app{ display:flex; height:100vh; width:100vw; }
+
+  /* ===== Sidebar ===== */
+  .sidebar{
+    width:var(--sidebar-w); flex:0 0 var(--sidebar-w);
+    background:var(--wp-bg); color:var(--wp-text);
+    display:flex; flex-direction:column; height:100%;
+  }
+  .wp-head{
+    padding:16px 16px 12px; display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid rgba(255,255,255,.12);
+  }
+  .wp-title{ display:flex; align-items:center; gap:8px; font-weight:800; font-size:19px; color:#fff; cursor:pointer; }
+  .wp-title .badge{
+    width:28px;height:28px;border-radius:8px;background:#fff;color:var(--wp-bg);
+    display:grid;place-items:center;font-weight:800;font-size:15px;flex:0 0 auto;
+  }
+  .home-link{
+    font-size:12px; color:var(--wp-text-dim); border:1px solid rgba(255,255,255,.25);
+    border-radius:14px; padding:4px 10px; cursor:pointer; white-space:nowrap;
+  }
+  .home-link:hover{ color:#fff; border-color:rgba(255,255,255,.5); }
+
+  .sidebar-scroll{ flex:1; overflow-y:auto; padding:10px 0 16px; }
+  .sb-section{ margin-top:14px; }
+  .sb-section-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:4px 16px; font-size:13px; font-weight:700; color:var(--wp-text-dim);
+    cursor:pointer; user-select:none;
+  }
+  .sb-section-head .plus{
+    width:20px;height:20px;border-radius:5px;display:grid;place-items:center;
+    font-size:15px;color:var(--wp-text-dim); cursor:pointer;
+  }
+  .sb-section-head .plus:hover{ background:rgba(255,255,255,.12); color:#fff; }
+  .sb-item{
+    display:flex; align-items:center; gap:8px; padding:6px 16px;
+    font-size:15px; color:var(--wp-text-dim); cursor:pointer; position:relative;
+  }
+  .sb-item:hover{ background:var(--wp-bg-hover); color:#fff; }
+  .sb-item.active{ background:var(--wp-bg-active); color:#fff; font-weight:700; }
+  .sb-item .hash{ opacity:.7; width:16px; text-align:center; flex:0 0 auto; }
+  .sb-item .icon-av{
+    width:20px;height:20px;border-radius:5px;overflow:hidden;flex:0 0 auto;
+    display:grid;place-items:center;font-size:13px;background:rgba(255,255,255,.15);
+  }
+  .sb-item .icon-av img{ width:100%;height:100%;object-fit:cover; }
+  .sb-item .lbl{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sb-item .unread-dot{
+    background:#e01e5a; color:#fff; font-size:11px; font-weight:800;
+    border-radius:9px; padding:1px 6px; min-width:18px; text-align:center;
+  }
+  .sb-empty{ padding:4px 16px; font-size:13px; color:var(--wp-text-dim); opacity:.7; }
+
+  .wp-me{
+    border-top:1px solid rgba(255,255,255,.12); padding:10px 12px;
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+  }
+  .wp-me:hover{ background:var(--wp-bg-hover); }
+  .wp-me-av{
+    width:32px;height:32px;border-radius:8px;overflow:hidden;flex:0 0 auto;
+    display:grid;place-items:center;font-size:18px;background:rgba(255,255,255,.15);
+  }
+  .wp-me-av img{ width:100%;height:100%;object-fit:cover; }
+  .wp-me-name{ font-weight:700; font-size:14px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* ===== Main pane ===== */
+  .main{ flex:1; display:flex; flex-direction:column; height:100%; min-width:0; }
+  .chat-head{
+    padding:14px 20px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:10px; box-shadow:0 1px 0 rgba(0,0,0,.04);
+    flex:0 0 auto;
+  }
+  .chat-head .icon-av{
+    width:26px;height:26px;border-radius:6px;overflow:hidden;flex:0 0 auto;
+    display:grid;place-items:center;font-size:15px;background:#f0f0f0;
+  }
+  .chat-head .icon-av img{ width:100%;height:100%;object-fit:cover; }
+  .chat-head h2{ font-size:17px; font-weight:800; }
+  .chat-head .sub{ font-size:12px; color:var(--muted); margin-inline-start:4px; }
+
+  .chat-body{ flex:1; overflow-y:auto; padding:16px 24px; display:flex; flex-direction:column; gap:10px; }
+  .msg-row{ display:flex; gap:10px; max-width:70%; }
+  .msg-row.mine{ align-self:flex-start; flex-direction:row-reverse; }
+  .msg-row .icon-av{
+    width:32px;height:32px;border-radius:6px;overflow:hidden;flex:0 0 auto;
+    display:grid;place-items:center;font-size:17px;background:#f0f0f0;margin-top:2px;
+  }
+  .msg-row .icon-av img{ width:100%;height:100%;object-fit:cover; }
+  .msg-content{ display:flex; flex-direction:column; gap:2px; }
+  .msg-row.mine .msg-content{ align-items:flex-end; }
+  .msg-meta{ font-size:12px; color:var(--muted); display:flex; gap:6px; }
+  .msg-row.mine .msg-meta{ flex-direction:row-reverse; }
+  .msg-bubble{
+    background:#f0f0f0; padding:8px 14px; border-radius:14px; font-size:15px; line-height:1.4;
+    white-space:pre-wrap; word-break:break-word;
+  }
+  .msg-row.mine .msg-bubble{ background:var(--accent); color:#fff; }
+  .chat-empty{ margin:auto; color:var(--muted); font-size:14px; text-align:center; }
+
+  .composer{ flex:0 0 auto; padding:14px 20px 18px; }
+  .composer-box{
+    border:1px solid var(--line); border-radius:10px; display:flex; align-items:center;
+    padding:6px 6px 6px 6px; box-shadow:0 1px 3px rgba(0,0,0,.05);
+  }
+  .composer-box input{
+    flex:1; border:none; outline:none; font-family:inherit; font-size:15px; padding:8px 10px; background:transparent;
+  }
+  .composer-box button{
+    background:var(--accent-2); color:#fff; border:none; border-radius:6px; font-weight:700;
+    padding:8px 18px; cursor:pointer; font-size:14px;
+  }
+  .composer-box button:disabled{ opacity:.4; cursor:default; }
+
+  /* ===== Welcome / empty state ===== */
+  .welcome{ margin:auto; text-align:center; max-width:360px; color:var(--muted); }
+  .welcome h2{ color:var(--ink); margin-bottom:8px; }
+
+  /* ===== Overlays / modals ===== */
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.45); display:none;
+    align-items:center; justify-content:center; z-index:100; padding:20px;
+  }
+  .overlay.show{ display:flex; }
+  .modal{
+    background:#fff; border-radius:12px; width:100%; max-width:400px; max-height:80vh;
+    display:flex; flex-direction:column; box-shadow:var(--shadow); overflow:hidden;
+  }
+  .modal-head{ padding:16px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+  .modal-head h3{ font-size:17px; }
+  .modal-close{ cursor:pointer; font-size:20px; color:var(--muted); background:none; border:none; line-height:1; }
+  .modal-body{ padding:14px 18px; overflow-y:auto; flex:1; }
+  .modal-foot{ padding:12px 18px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px; }
+
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:13px; font-weight:700; margin-bottom:5px; color:var(--muted); }
+  .field input[type=text]{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
+    font-family:inherit; font-size:14px; outline:none;
+  }
+  .field input[type=text]:focus{ border-color:var(--accent); }
+  .warn{ color:#c0392b; font-size:13px; margin-top:6px; display:none; }
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    border:none; border-radius:8px; font-family:inherit; font-weight:700;
+    cursor:pointer; padding:9px 16px; font-size:14px;
+  }
+  .btn-primary{ background:var(--accent-2); color:#fff; }
+  .btn-primary:hover{ opacity:.9; }
+  .btn-ghost{ background:#f0f0f0; color:var(--ink); }
+  .btn-ghost:hover{ background:#e4e4e4; }
+
+  .pick-row{
+    display:flex; align-items:center; gap:10px; padding:9px 6px; border-radius:8px; cursor:pointer;
+  }
+  .pick-row:hover{ background:#f5f5f5; }
+  .pick-row .icon-av{
+    width:30px;height:30px;border-radius:7px;overflow:hidden;flex:0 0 auto;
+    display:grid;place-items:center;font-size:16px;background:#f0f0f0;
+  }
+  .pick-row .icon-av img{ width:100%;height:100%;object-fit:cover; }
+  .pick-empty{ padding:14px 6px; color:var(--muted); font-size:14px; text-align:center; }
+
+  .emoji-pick{ display:flex; flex-wrap:wrap; gap:6px; }
+  .emoji-pick span{
+    width:34px;height:34px;border-radius:8px;display:grid;place-items:center;font-size:18px;
+    cursor:pointer; background:#f0f0f0;
+  }
+  .emoji-pick span.sel{ background:var(--accent); }
+
+  .multi-row{ display:flex; align-items:center; justify-content:space-between; }
+  .multi-row .chk{ width:18px;height:18px;border:2px solid var(--line);border-radius:5px;display:grid;place-items:center;font-size:12px;flex:0 0 auto; }
+  .multi-row.sel .chk{ background:var(--accent); border-color:var(--accent); color:#fff; }
+
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:rgba(0,0,0,.15); border-radius:8px; }
+  .sidebar ::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.2); }
+
+  @media (max-width: 760px){
+    :root{ --sidebar-w: 78vw; }
+    .app{ position:relative; }
+    .sidebar{ position:fixed; inset:0 auto 0 0; z-index:50; transform:translateX(100%); transition:transform .2s; }
+    html[dir="rtl"] .sidebar{ transform:translateX(100%); }
+    .sidebar.open{ transform:translateX(0); }
+    .menu-btn{ display:inline-flex !important; }
+  }
+  .menu-btn{ display:none; background:none; border:none; font-size:20px; cursor:pointer; padding:4px 6px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="wp-head">
+      <div class="wp-title" onclick="showWelcome()">
+        <span class="badge">P</span>
+        Pelegram
+      </div>
+      <a class="home-link" href="/">STOP ←</a>
+    </div>
+
+    <div class="sidebar-scroll">
+      <div class="sb-section">
+        <div class="sb-section-head">
+          <span>ערוצים</span>
+          <span class="plus" title="ערוצים" onclick="openChannelBrowser()">＋</span>
+        </div>
+        <div id="channelList"></div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-section-head">
+          <span>הודעות ישירות</span>
+          <span class="plus" title="הודעה חדשה" onclick="openNewDm()">＋</span>
+        </div>
+        <div id="dmList"></div>
+      </div>
+    </div>
+
+    <div class="wp-me" id="wpMe" onclick="openIdentityPicker()">
+      <span class="wp-me-av" id="wpMeAvatar">?</span>
+      <span class="wp-me-name" id="wpMeName">התחברות</span>
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main class="main">
+    <div class="chat-head" id="chatHead" style="display:none">
+      <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <span class="icon-av" id="chatHeadIcon"></span>
+      <h2 id="chatHeadTitle"></h2>
+      <span class="sub" id="chatHeadSub"></span>
+    </div>
+    <div class="chat-body" id="chatBody">
+      <div class="welcome">
+        <h2>ברוכים הבאים ל-Pelegram 👋</h2>
+        <p>בחרו ערוץ או שיחה מהתפריט, או התחילו שיחה חדשה.</p>
+      </div>
+    </div>
+    <div class="composer" id="composer" style="display:none">
+      <div class="composer-box">
+        <input id="msgInput" type="text" placeholder="כתבו הודעה…" maxlength="2000" onkeydown="if(event.key==='Enter')sendCurrentMessage()">
+        <button id="sendBtn" onclick="sendCurrentMessage()">שליחה</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ===== Identity picker (shared STOP login) ===== -->
+<div class="overlay" id="identityOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>מי אתם? 👋</h3>
+      <button class="modal-close" onclick="closeIdentityPicker()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>משתמש קיים</label>
+        <input type="text" id="identitySearch" placeholder="חיפוש…" oninput="renderIdentityList()">
+      </div>
+      <div id="identityList"></div>
+      <div class="field" style="margin-top:16px">
+        <label>או צרו משתמש חדש</label>
+        <input type="text" id="newIdentityName" placeholder="השם שלכם">
+      </div>
+      <div class="warn" id="identityWarn"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="createIdentity()">יצירה והתחברות</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== New DM picker ===== -->
+<div class="overlay" id="newDmOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>הודעה חדשה</h3>
+      <button class="modal-close" onclick="closeNewDm()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <input type="text" id="newDmSearch" placeholder="חיפוש משתמש…" oninput="renderNewDmList()">
+      </div>
+      <div id="newDmList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Channel browser ===== -->
+<div class="overlay" id="channelBrowserOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>ערוצים</h3>
+      <button class="modal-close" onclick="closeChannelBrowser()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <input type="text" id="channelSearch" placeholder="חיפוש ערוץ…" oninput="renderChannelBrowserList()">
+      </div>
+      <div id="channelBrowserList"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeChannelBrowser(); openNewChannel();">＋ ערוץ חדש</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== New channel ===== -->
+<div class="overlay" id="newChannelOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>ערוץ חדש</h3>
+      <button class="modal-close" onclick="closeNewChannel()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>אייקון</label>
+        <div class="emoji-pick" id="newChannelEmojiPick"></div>
+      </div>
+      <div class="field">
+        <label>שם הערוץ</label>
+        <input type="text" id="newChannelName" placeholder="למשל: תכנון-אירועים">
+      </div>
+      <div class="field">
+        <label>תיאור (לא חובה)</label>
+        <input type="text" id="newChannelDesc" placeholder="במה עוסק הערוץ">
+      </div>
+      <div class="field">
+        <label>הוספת חברים</label>
+        <input type="text" id="newChannelMemberSearch" placeholder="חיפוש…" oninput="renderNewChannelMemberList()">
+        <div id="newChannelMemberList" style="margin-top:6px"></div>
+      </div>
+      <div class="warn" id="newChannelWarn"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="createChannel()">יצירת ערוץ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== Shared identity (same as STOP) ===================== */
+function currentUser(){
+  try{ return JSON.parse(localStorage.getItem('stopUser')); }catch(e){ return null; }
+}
+function setCurrentUser(user){
+  localStorage.setItem('stopUser', JSON.stringify(user));
+  renderMe();
+  loadSidebar();
+}
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+const AVATAR_EMOJIS = ['🙂','😎','🐱','🐶','🦊','🐼','🐵','🦁','🐸','🐧','🌟','🌸'];
+const CHANNEL_EMOJIS = ['💬','🏡','🍕','🌍','🎉','⚽','🎸','🧗','🚗','☕','🌊','🐾'];
+
+function avatarHtml(user){
+  if(!user) return '?';
+  if(user.avatar_type==='image' && user.avatar_value) return `<img src="${user.avatar_value}">`;
+  return escapeHtml(user.avatar_value || '🙂');
+}
+function channelIconHtml(g){
+  if(g.image_url) return `<img src="${g.image_url}">`;
+  return escapeHtml(g.emoji || '💬');
+}
+
+let USERS = [];
+async function fetchUsers(){
+  try{
+    const res = await fetch('/api/users');
+    if(!res.ok) throw new Error();
+    USERS = await res.json();
+  }catch(e){ console.warn('נכשלה טעינת משתמשים', e); USERS = []; }
+}
+
+function renderMe(){
+  const user = currentUser();
+  document.getElementById('wpMeAvatar').innerHTML = user ? avatarHtml(user) : '?';
+  document.getElementById('wpMeName').textContent = user ? user.name : 'התחברות';
+}
+
+/* ===================== Identity picker ===================== */
+function openIdentityPicker(){
+  document.getElementById('identityOverlay').classList.add('show');
+  document.getElementById('identitySearch').value = '';
+  document.getElementById('newIdentityName').value = '';
+  document.getElementById('identityWarn').style.display = 'none';
+  fetchUsers().then(renderIdentityList);
+}
+function closeIdentityPicker(){ document.getElementById('identityOverlay').classList.remove('show'); }
+
+function renderIdentityList(){
+  const el = document.getElementById('identityList');
+  const q = document.getElementById('identitySearch').value.trim().toLowerCase();
+  const list = q ? USERS.filter(u=>u.name.toLowerCase().includes(q)) : USERS;
+  if(!list.length){ el.innerHTML = '<div class="pick-empty">אין משתמשים תואמים</div>'; return; }
+  el.innerHTML = '';
+  list.forEach(u=>{
+    const d = document.createElement('div');
+    d.className = 'pick-row';
+    d.innerHTML = `<span class="icon-av">${avatarHtml(u)}</span><span>${escapeHtml(u.name)}</span>`;
+    d.onclick = ()=>{ setCurrentUser(u); closeIdentityPicker(); showWelcome(); };
+    el.appendChild(d);
+  });
+}
+
+async function createIdentity(){
+  const warn = document.getElementById('identityWarn');
+  const name = document.getElementById('newIdentityName').value.trim();
+  warn.style.display = 'none';
+  if(!name){ warn.textContent = 'צריך למלא שם 😊'; warn.style.display = 'block'; return; }
+  try{
+    const res = await fetch('/api/users', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name}),
+    });
+    if(!res.ok) throw new Error();
+    const user = await res.json();
+    setCurrentUser(user);
+    closeIdentityPicker();
+    showWelcome();
+  }catch(e){
+    console.warn('נכשלה יצירת משתמש', e);
+    warn.textContent = 'משהו השתבש, נסו שוב 🙏'; warn.style.display = 'block';
+  }
+}
+
+/* ===================== Active view state ===================== */
+// activeView: null | {type:'dm', user_id, name, avatar_type, avatar_value}
+//           | {type:'channel', id, name, emoji, image_url}
+let activeView = null;
+let pollTimer = null;
+
+function showWelcome(){
+  activeView = null;
+  stopPolling();
+  document.getElementById('chatHead').style.display = 'none';
+  document.getElementById('composer').style.display = 'none';
+  document.getElementById('chatBody').innerHTML = `
+    <div class="welcome">
+      <h2>ברוכים הבאים ל-Pelegram 👋</h2>
+      <p>בחרו ערוץ או שיחה מהתפריט, או התחילו שיחה חדשה.</p>
+    </div>`;
+  highlightActiveSidebarItem();
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer = null; } }
+
+function highlightActiveSidebarItem(){
+  document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
+  if(!activeView) return;
+  const sel = activeView.type === 'dm'
+    ? `.sb-item[data-dm="${activeView.user_id}"]`
+    : `.sb-item[data-channel="${activeView.id}"]`;
+  const el = document.querySelector(sel);
+  if(el) el.classList.add('active');
+}
+
+/* ===================== Sidebar: channels + DMs ===================== */
+let CHANNELS = [];   // groups the user is a member of
+let CONVERSATIONS = [];
+
+async function loadSidebar(){
+  const user = currentUser();
+  if(!user){
+    document.getElementById('channelList').innerHTML = '<div class="sb-empty">התחברו כדי לראות ערוצים</div>';
+    document.getElementById('dmList').innerHTML = '<div class="sb-empty">התחברו כדי לראות שיחות</div>';
+    return;
+  }
+  await Promise.all([loadChannels(), loadConversations()]);
+  renderChannelSidebar();
+  renderDmSidebar();
+  highlightActiveSidebarItem();
+}
+
+async function loadChannels(){
+  const user = currentUser();
+  try{
+    const res = await fetch(`/api/groups?user_id=${user.id}`);
+    if(!res.ok) throw new Error();
+    const all = await res.json();
+    CHANNELS = all.filter(g=>g.is_member);
+  }catch(e){ console.warn('נכשלה טעינת ערוצים', e); CHANNELS = []; }
+}
+
+function renderChannelSidebar(){
+  const el = document.getElementById('channelList');
+  if(!CHANNELS.length){ el.innerHTML = '<div class="sb-empty">אין ערוצים עדיין</div>'; return; }
+  el.innerHTML = '';
+  CHANNELS.forEach(g=>{
+    const d = document.createElement('div');
+    d.className = 'sb-item';
+    d.dataset.channel = g.id;
+    d.innerHTML = `<span class="icon-av">${channelIconHtml(g)}</span><span class="lbl">${escapeHtml(g.name)}</span>`;
+    d.onclick = ()=>openChannel(g);
+    el.appendChild(d);
+  });
+}
+
+async function loadConversations(){
+  const user = currentUser();
+  try{
+    const res = await fetch(`/api/messages?user_id=${user.id}`);
+    if(!res.ok) throw new Error();
+    CONVERSATIONS = await res.json();
+  }catch(e){ console.warn('נכשלה טעינת שיחות', e); CONVERSATIONS = []; }
+}
+
+function renderDmSidebar(){
+  const el = document.getElementById('dmList');
+  if(!CONVERSATIONS.length){ el.innerHTML = '<div class="sb-empty">אין שיחות עדיין</div>'; return; }
+  el.innerHTML = '';
+  CONVERSATIONS.forEach(c=>{
+    const d = document.createElement('div');
+    d.className = 'sb-item';
+    d.dataset.dm = c.user_id;
+    d.innerHTML = `
+      <span class="icon-av">${avatarHtml({avatar_type:c.avatar_type, avatar_value:c.avatar_value})}</span>
+      <span class="lbl">${escapeHtml(c.name)}</span>
+      ${c.unread_count>0 ? `<span class="unread-dot">${c.unread_count>99?'99+':c.unread_count}</span>` : ''}
+    `;
+    d.onclick = ()=>openDm({user_id:c.user_id, name:c.name, avatar_type:c.avatar_type, avatar_value:c.avatar_value});
+    el.appendChild(d);
+  });
+}
+
+/* ===================== DM thread ===================== */
+async function openDm(other){
+  const user = currentUser();
+  if(!user){ openIdentityPicker(); return; }
+  activeView = {type:'dm', ...other};
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('chatHead').style.display = 'flex';
+  document.getElementById('chatHeadIcon').innerHTML = avatarHtml({avatar_type:other.avatar_type, avatar_value:other.avatar_value});
+  document.getElementById('chatHeadTitle').textContent = other.name;
+  document.getElementById('chatHeadSub').textContent = 'הודעה ישירה';
+  document.getElementById('composer').style.display = 'block';
+  highlightActiveSidebarItem();
+  await renderDmThread();
+  markDmRead(other.user_id);
+  stopPolling();
+  pollTimer = setInterval(()=>{
+    if(activeView && activeView.type==='dm') renderDmThread(true);
+  }, 5000);
+}
+
+async function renderDmThread(silent){
+  const user = currentUser();
+  const other = activeView;
+  const body = document.getElementById('chatBody');
+  if(!silent) body.innerHTML = '<div class="chat-empty">טוען…</div>';
+  try{
+    const res = await fetch(`/api/messages?user_id=${user.id}&with_id=${other.user_id}`);
+    if(!res.ok) throw new Error();
+    const thread = await res.json();
+    if(!activeView || activeView.type!=='dm' || activeView.user_id!==other.user_id) return;
+    renderMessages(thread.map(m=>({
+      mine: m.sender_id===user.id,
+      body: m.body,
+      author: m.sender_id===user.id ? user.name : other.name,
+      avatar: m.sender_id===user.id ? user : other,
+    })), 'עדיין אין הודעות, כתבו את הראשונה 👋');
+  }catch(e){
+    console.warn('נכשלה טעינת שיחה', e);
+    if(!silent) body.innerHTML = '<div class="chat-empty">נכשלה טעינת השיחה 😕</div>';
+  }
+}
+
+async function markDmRead(withId){
+  const user = currentUser();
+  try{
+    await fetch('/api/messages', {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({user_id:user.id, with_id:withId}),
+    });
+    loadConversations().then(renderDmSidebar).then(highlightActiveSidebarItem);
+  }catch(e){ console.warn('נכשל סימון כנקרא', e); }
+}
+
+/* ===================== Channel (group) chat ===================== */
+async function openChannel(g){
+  const user = currentUser();
+  if(!user){ openIdentityPicker(); return; }
+  activeView = {type:'channel', ...g};
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('chatHead').style.display = 'flex';
+  document.getElementById('chatHeadIcon').innerHTML = channelIconHtml(g);
+  document.getElementById('chatHeadTitle').textContent = g.name;
+  document.getElementById('chatHeadSub').textContent = `${g.member_count ?? ''} חברים`.trim();
+  document.getElementById('composer').style.display = 'block';
+  highlightActiveSidebarItem();
+  await renderChannelChat();
+  stopPolling();
+  pollTimer = setInterval(()=>{
+    if(activeView && activeView.type==='channel') renderChannelChat(true);
+  }, 5000);
+}
+
+async function renderChannelChat(silent){
+  const user = currentUser();
+  const g = activeView;
+  const body = document.getElementById('chatBody');
+  if(!silent) body.innerHTML = '<div class="chat-empty">טוען…</div>';
+  try{
+    const res = await fetch(`/api/groups/${g.id}/messages`);
+    if(!res.ok) throw new Error();
+    const messages = await res.json();
+    if(!activeView || activeView.type!=='channel' || activeView.id!==g.id) return;
+    renderMessages(messages.map(m=>({
+      mine: m.sender_id===user.id,
+      body: m.body,
+      author: m.sender_name,
+      avatar: {avatar_type:m.avatar_type, avatar_value:m.avatar_value},
+    })), 'עדיין אין הודעות בערוץ, כתבו את הראשונה 👋');
+  }catch(e){
+    console.warn('נכשלה טעינת הודעות הערוץ', e);
+    if(!silent) body.innerHTML = '<div class="chat-empty">נכשלה טעינת ההודעות 😕</div>';
+  }
+}
+
+/* ===================== Shared message rendering + sending ===================== */
+function renderMessages(messages, emptyText){
+  const body = document.getElementById('chatBody');
+  const wasNearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 60;
+  if(!messages.length){
+    body.innerHTML = `<div class="chat-empty">${escapeHtml(emptyText)}</div>`;
+    return;
+  }
+  body.innerHTML = messages.map(m => `
+    <div class="msg-row ${m.mine?'mine':'theirs'}">
+      <span class="icon-av">${avatarHtml(m.avatar)}</span>
+      <div class="msg-content">
+        ${m.mine ? '' : `<span class="msg-meta">${escapeHtml(m.author)}</span>`}
+        <div class="msg-bubble">${escapeHtml(m.body)}</div>
+      </div>
+    </div>
+  `).join('');
+  if(wasNearBottom || true) body.scrollTop = body.scrollHeight;
+}
+
+async function sendCurrentMessage(){
+  const user = currentUser();
+  if(!user || !activeView) return;
+  const input = document.getElementById('msgInput');
+  const body = input.value.trim();
+  if(!body) return;
+  input.value = '';
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  try{
+    if(activeView.type === 'dm'){
+      const res = await fetch('/api/messages', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({sender_id:user.id, recipient_id:activeView.user_id, body}),
+      });
+      if(!res.ok) throw new Error();
+      await renderDmThread();
+      loadConversations().then(renderDmSidebar).then(highlightActiveSidebarItem);
+    }else{
+      const res = await fetch(`/api/groups/${activeView.id}/messages`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({sender_id:user.id, body}),
+      });
+      if(!res.ok) throw new Error();
+      await renderChannelChat();
+    }
+  }catch(e){
+    console.warn('נכשלה שליחת הודעה', e);
+    input.value = body;
+  }finally{
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+/* ===================== New DM picker ===================== */
+async function openNewDm(){
+  const user = currentUser();
+  if(!user){ openIdentityPicker(); return; }
+  document.getElementById('newDmOverlay').classList.add('show');
+  document.getElementById('newDmSearch').value = '';
+  await fetchUsers();
+  renderNewDmList();
+}
+function closeNewDm(){ document.getElementById('newDmOverlay').classList.remove('show'); }
+
+function renderNewDmList(){
+  const el = document.getElementById('newDmList');
+  const user = currentUser();
+  const q = document.getElementById('newDmSearch').value.trim().toLowerCase();
+  const list = USERS.filter(u=>u.id!==user.id && (!q || u.name.toLowerCase().includes(q)));
+  if(!list.length){ el.innerHTML = '<div class="pick-empty">לא נמצאו משתמשים</div>'; return; }
+  el.innerHTML = '';
+  list.forEach(u=>{
+    const d = document.createElement('div');
+    d.className = 'pick-row';
+    d.innerHTML = `<span class="icon-av">${avatarHtml(u)}</span><span>${escapeHtml(u.name)}</span>`;
+    d.onclick = ()=>{ closeNewDm(); openDm({user_id:u.id, name:u.name, avatar_type:u.avatar_type, avatar_value:u.avatar_value}); };
+    el.appendChild(d);
+  });
+}
+
+/* ===================== Channel browser (all groups) ===================== */
+let ALL_CHANNELS = [];
+async function openChannelBrowser(){
+  const user = currentUser();
+  if(!user){ openIdentityPicker(); return; }
+  document.getElementById('channelBrowserOverlay').classList.add('show');
+  document.getElementById('channelSearch').value = '';
+  document.getElementById('channelBrowserList').innerHTML = '<div class="pick-empty">טוען…</div>';
+  try{
+    const res = await fetch(`/api/groups?user_id=${user.id}`);
+    if(!res.ok) throw new Error();
+    ALL_CHANNELS = await res.json();
+  }catch(e){ console.warn('נכשלה טעינת ערוצים', e); ALL_CHANNELS = []; }
+  renderChannelBrowserList();
+}
+function closeChannelBrowser(){ document.getElementById('channelBrowserOverlay').classList.remove('show'); }
+
+function renderChannelBrowserList(){
+  const el = document.getElementById('channelBrowserList');
+  const q = document.getElementById('channelSearch').value.trim().toLowerCase();
+  const list = q ? ALL_CHANNELS.filter(g=>g.name.toLowerCase().includes(q)) : ALL_CHANNELS;
+  if(!list.length){ el.innerHTML = '<div class="pick-empty">אין ערוצים עדיין. צרו את הראשון ＋</div>'; return; }
+  el.innerHTML = '';
+  list.forEach(g=>{
+    const d = document.createElement('div');
+    d.className = 'pick-row';
+    d.innerHTML = `
+      <span class="icon-av">${channelIconHtml(g)}</span>
+      <span style="flex:1">${escapeHtml(g.name)}<div style="font-size:12px;color:var(--muted)">${g.member_count} חברים</div></span>
+      ${g.is_member ? '' : '<button class="btn btn-primary" type="button">הצטרפות</button>'}
+    `;
+    if(g.is_member){
+      d.onclick = ()=>{ closeChannelBrowser(); openChannel(g); };
+    }else{
+      const btn = d.querySelector('button');
+      btn.onclick = async (e)=>{
+        e.stopPropagation();
+        const user = currentUser();
+        try{
+          await fetch(`/api/groups/${g.id}/members`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({user_id:user.id}),
+          });
+        }catch(err){ console.warn('נכשלה הצטרפות', err); return; }
+        g.is_member = true;
+        await loadSidebar();
+        closeChannelBrowser();
+        openChannel(g);
+      };
+    }
+    el.appendChild(d);
+  });
+}
+
+/* ===================== New channel ===================== */
+let selectedChannelEmoji = CHANNEL_EMOJIS[0];
+let selectedNewChannelMemberIds = new Set();
+
+function buildNewChannelEmojiPicker(){
+  const el = document.getElementById('newChannelEmojiPick');
+  el.innerHTML = '';
+  CHANNEL_EMOJIS.forEach(e=>{
+    const s = document.createElement('span');
+    s.textContent = e;
+    if(e===selectedChannelEmoji) s.className = 'sel';
+    s.onclick = ()=>{ selectedChannelEmoji = e; buildNewChannelEmojiPicker(); };
+    el.appendChild(s);
+  });
+}
+
+function renderNewChannelMemberList(){
+  const el = document.getElementById('newChannelMemberList');
+  const user = currentUser();
+  const q = document.getElementById('newChannelMemberSearch').value.trim().toLowerCase();
+  const candidates = USERS.filter(u=>u.id!==user.id && (!q || u.name.toLowerCase().includes(q)));
+  if(!candidates.length){ el.innerHTML = '<div class="pick-empty">לא נמצאו משתמשים</div>'; return; }
+  el.innerHTML = '';
+  candidates.forEach(u=>{
+    const sel = selectedNewChannelMemberIds.has(u.id);
+    const d = document.createElement('div');
+    d.className = 'pick-row multi-row' + (sel ? ' sel' : '');
+    d.innerHTML = `
+      <span style="display:flex;align-items:center;gap:10px">
+        <span class="icon-av">${avatarHtml(u)}</span><span>${escapeHtml(u.name)}</span>
+      </span>
+      <span class="chk">${sel ? '✓' : ''}</span>
+    `;
+    d.onclick = ()=>{
+      if(selectedNewChannelMemberIds.has(u.id)) selectedNewChannelMemberIds.delete(u.id);
+      else selectedNewChannelMemberIds.add(u.id);
+      renderNewChannelMemberList();
+    };
+    el.appendChild(d);
+  });
+}
+
+async function openNewChannel(){
+  const user = currentUser();
+  if(!user){ openIdentityPicker(); return; }
+  document.getElementById('newChannelOverlay').classList.add('show');
+  document.getElementById('newChannelName').value = '';
+  document.getElementById('newChannelDesc').value = '';
+  document.getElementById('newChannelMemberSearch').value = '';
+  document.getElementById('newChannelWarn').style.display = 'none';
+  selectedChannelEmoji = CHANNEL_EMOJIS[0];
+  selectedNewChannelMemberIds = new Set();
+  buildNewChannelEmojiPicker();
+  await fetchUsers();
+  renderNewChannelMemberList();
+}
+function closeNewChannel(){ document.getElementById('newChannelOverlay').classList.remove('show'); }
+
+async function createChannel(){
+  const user = currentUser();
+  if(!user) return;
+  const warn = document.getElementById('newChannelWarn');
+  const name = document.getElementById('newChannelName').value.trim();
+  const description = document.getElementById('newChannelDesc').value.trim();
+  warn.style.display = 'none';
+  if(!name){ warn.textContent = 'צריך שם לערוץ 😊'; warn.style.display = 'block'; return; }
+
+  let group;
+  try{
+    const res = await fetch('/api/groups', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, description, emoji:selectedChannelEmoji, created_by:user.id}),
+    });
+    if(res.status === 409){ warn.textContent = 'ערוץ בשם הזה כבר קיים 🙃'; warn.style.display='block'; return; }
+    if(!res.ok) throw new Error();
+    group = await res.json();
+  }catch(e){
+    console.warn('נכשלה יצירת ערוץ', e);
+    warn.textContent = 'משהו השתבש, נסו שוב 🙏'; warn.style.display = 'block';
+    return;
+  }
+
+  const memberIds = [...selectedNewChannelMemberIds];
+  if(memberIds.length){
+    await Promise.all(memberIds.map(id=>
+      fetch(`/api/groups/${group.id}/members`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({user_id:id}),
+      }).catch(e=>console.warn('נכשלה הוספת חבר', e))
+    ));
+  }
+
+  closeNewChannel();
+  await loadSidebar();
+  openChannel(group);
+}
+
+/* ===================== Boot ===================== */
+document.querySelectorAll('.overlay').forEach(ov=>{
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.classList.remove('show'); });
+});
+
+(function init(){
+  renderMe();
+  const user = currentUser();
+  if(!user){
+    openIdentityPicker();
+  }
+  loadSidebar();
+})();
+</script>
+</body>
+</html>
