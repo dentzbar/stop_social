@@ -88,6 +88,21 @@
   }
   .home-link:hover{ color:#fff; border-color:rgba(255,255,255,.5); }
 
+  .sidebar-search{
+    margin:10px 16px 4px; position:relative; flex:0 0 auto;
+  }
+  .sidebar-search .icon{
+    position:absolute; inset-inline-start:11px; top:50%; transform:translateY(-50%);
+    font-size:13px; opacity:.7; pointer-events:none;
+  }
+  .sidebar-search input{
+    width:100%; padding:8px 12px 8px 12px; padding-inline-start:32px;
+    border-radius:7px; border:none; outline:none; font-family:inherit; font-size:14px;
+    background:rgba(255,255,255,.12); color:#fff;
+  }
+  .sidebar-search input::placeholder{ color:var(--wp-text-dim); }
+  .sidebar-search input:focus{ background:rgba(255,255,255,.2); }
+
   .sidebar-scroll{ flex:1; overflow-y:auto; padding:10px 0 16px; }
   .sb-section{ margin-top:14px; }
   .sb-section-head{
@@ -284,6 +299,11 @@
         Pelegram
       </div>
       <a class="home-link" href="/">STOP ←</a>
+    </div>
+
+    <div class="sidebar-search">
+      <span class="icon">🔍</span>
+      <input id="sidebarSearch" type="text" placeholder="חיפוש ערוצים ואנשים…" oninput="filterSidebar()">
     </div>
 
     <div class="sidebar-scroll">
@@ -570,6 +590,11 @@ function highlightActiveSidebarItem(){
 let CHANNELS = [];   // groups the user is a member of
 let CONVERSATIONS = [];
 
+function filterSidebar(){
+  renderChannelSidebar();
+  renderDmSidebar();
+}
+
 async function loadSidebar(){
   const user = currentUser();
   if(!user){
@@ -595,9 +620,12 @@ async function loadChannels(){
 
 function renderChannelSidebar(){
   const el = document.getElementById('channelList');
+  const q = document.getElementById('sidebarSearch').value.trim().toLowerCase();
+  const list = q ? CHANNELS.filter(g=>g.name.toLowerCase().includes(q)) : CHANNELS;
   if(!CHANNELS.length){ el.innerHTML = '<div class="sb-empty">אין ערוצים עדיין</div>'; return; }
+  if(!list.length){ el.innerHTML = '<div class="sb-empty">לא נמצאו ערוצים תואמים</div>'; return; }
   el.innerHTML = '';
-  CHANNELS.forEach(g=>{
+  list.forEach(g=>{
     const d = document.createElement('div');
     d.className = 'sb-item';
     d.dataset.channel = g.id;
@@ -618,9 +646,12 @@ async function loadConversations(){
 
 function renderDmSidebar(){
   const el = document.getElementById('dmList');
+  const q = document.getElementById('sidebarSearch').value.trim().toLowerCase();
+  const list = q ? CONVERSATIONS.filter(c=>c.name.toLowerCase().includes(q)) : CONVERSATIONS;
   if(!CONVERSATIONS.length){ el.innerHTML = '<div class="sb-empty">אין שיחות עדיין</div>'; return; }
+  if(!list.length){ el.innerHTML = '<div class="sb-empty">לא נמצאו אנשים תואמים</div>'; return; }
   el.innerHTML = '';
-  CONVERSATIONS.forEach(c=>{
+  list.forEach(c=>{
     const d = document.createElement('div');
     d.className = 'sb-item';
     d.dataset.dm = c.user_id;
