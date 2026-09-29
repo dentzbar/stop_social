@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#39c46e">
+<title>הליכה על כדור הארץ · STOP</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --green:#39c46e;
+    --green-dark:#22a35a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{
+    width:100%;height:100%;overflow:hidden;background:#bfe4ff;
+    font-family:'Segoe UI',Tahoma,sans-serif;
+    -webkit-user-select:none;user-select:none;touch-action:none;
+  }
+  canvas{display:block;width:100%;height:100%}
+
+  #topbar{
+    position:fixed;top:0;insete-inline-start:0;left:0;right:0;z-index:20;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px;pointer-events:none;
+  }
+  #topbar > *{pointer-events:auto}
+  #backBtn{
+    display:inline-flex;align-items:center;gap:6px;
+    background:rgba(255,255,255,.92);color:#12211a;border:none;
+    border-radius:24px;padding:10px 18px;font-size:15px;font-weight:700;
+    cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.15);font-family:inherit;
+  }
+  #backBtn:active{transform:scale(.96)}
+  #hud{
+    background:rgba(255,255,255,.92);border-radius:16px;padding:8px 16px;
+    font-size:13px;font-weight:600;color:#22a35a;box-shadow:0 4px 14px rgba(0,0,0,.15);
+    text-align:center;line-height:1.4;
+  }
+
+  #charBtn{
+    position:fixed;top:70px;left:16px;z-index:20;
+    background:rgba(255,255,255,.92);border:none;border-radius:24px;
+    padding:10px 16px;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.15);
+  }
+  #charPicker{
+    position:fixed;top:118px;left:16px;z-index:21;
+    background:rgba(255,255,255,.96);border-radius:16px;padding:10px;
+    display:none;grid-template-columns:repeat(4,1fr);gap:8px;
+    box-shadow:0 10px 30px rgba(0,0,0,.2);
+  }
+  #charPicker.show{display:grid}
+  #charPicker button{
+    width:44px;height:44px;font-size:24px;border:2px solid transparent;border-radius:12px;
+    background:#f2f5f3;cursor:pointer;
+  }
+  #charPicker button.active{border-color:var(--green);background:#eafaf0}
+
+  /* Joystick (mobile) */
+  #joystick{
+    position:fixed;bottom:34px;left:34px;width:110px;height:110px;z-index:20;
+    border-radius:50%;background:rgba(255,255,255,.35);border:2px solid rgba(255,255,255,.6);
+    touch-action:none;
+  }
+  #stick{
+    position:absolute;width:48px;height:48px;border-radius:50%;
+    background:rgba(57,196,110,.85);top:31px;left:31px;
+    box-shadow:0 2px 8px rgba(0,0,0,.25);
+  }
+  #hint{
+    position:fixed;bottom:36px;right:20px;z-index:20;
+    background:rgba(255,255,255,.85);border-radius:14px;padding:10px 14px;
+    font-size:13px;color:#12211a;max-width:200px;text-align:center;line-height:1.5;
+    box-shadow:0 4px 14px rgba(0,0,0,.12);
+  }
+  @media (min-width:900px){
+    #joystick{display:none}
+  }
+  #loading{
+    position:fixed;inset:0;z-index:100;background:#bfe4ff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;font-weight:700;color:#12211a;
+  }
+
+  /* ===== Country search ===== */
+  #searchWrap{
+    position:fixed;top:70px;right:16px;z-index:25;width:min(280px, 60vw);
+  }
+  #countrySearch{
+    width:100%;padding:11px 16px;border-radius:22px;border:none;
+    font-family:inherit;font-size:14px;background:rgba(255,255,255,.94);
+    box-shadow:0 4px 14px rgba(0,0,0,.15);outline:none;
+  }
+  #searchResults{
+    display:none;margin-top:8px;background:rgba(255,255,255,.97);border-radius:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.2);max-height:260px;overflow:auto;
+  }
+  #searchResults.show{display:block}
+  .searchRow{
+    display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:14px;
+  }
+  .searchRow:hover{background:#eafaf0}
+  .searchRow img{width:24px;height:16px;object-fit:cover;border-radius:2px;flex:none}
+
+  /* ===== Country info modal ===== */
+  #countryModal{
+    position:fixed;inset:0;z-index:60;display:none;
+    align-items:center;justify-content:center;background:rgba(10,20,15,.55);
+    padding:20px;
+  }
+  #countryModal.show{display:flex}
+  #countryModalCard{
+    position:relative;background:#fff;border-radius:20px;max-width:360px;width:100%;
+    padding:22px 20px 26px;box-shadow:0 24px 60px rgba(0,0,0,.35);text-align:center;
+  }
+  #countryModalClose{
+    position:absolute;top:12px;left:12px;width:30px;height:30px;border-radius:50%;
+    border:none;background:#f2f5f3;font-size:15px;cursor:pointer;color:#12211a;
+  }
+  #countryModalFlag{
+    width:100%;max-width:220px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.2);
+    margin:6px auto 14px;display:block;
+  }
+  #countryModalName{font-size:21px;font-weight:800;margin-bottom:10px;color:#12211a}
+  #countryModalMeta{font-size:14px;color:#4a5a52;line-height:2}
+  #countryModalMeta b{color:#22a35a}
+
+  /* ===== Minimap ===== */
+  #minimapWrap{
+    position:fixed;bottom:20px;left:16px;z-index:22;
+    width:150px;border-radius:12px;overflow:hidden;
+    box-shadow:0 4px 14px rgba(0,0,0,.25);border:2px solid rgba(255,255,255,.85);
+    background:#0d1b2a;
+  }
+  #minimapWrap canvas{display:block;width:100%;height:auto}
+  @media (max-width:899px){
+    #minimapWrap{bottom:160px;left:12px;width:120px}
+  }
+
+  /* ===== Fly-to overlay ===== */
+  #flyOverlay{
+    position:fixed;inset:0;z-index:80;display:none;
+    align-items:center;justify-content:center;
+    background:rgba(191,228,255,.35);backdrop-filter:blur(2px);
+  }
+  #flyOverlay.show{display:flex}
+  #flyText{
+    background:rgba(255,255,255,.9);padding:14px 26px;border-radius:26px;
+    font-size:17px;font-weight:700;color:#12211a;box-shadow:0 10px 30px rgba(0,0,0,.2);
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">🌍 טוען את הכדור...</div>
+
+<div id="topbar">
+  <button id="backBtn" onclick="location.href='/'">→ חזרה</button>
+  <div id="hud">הליכה על פני כדור הארץ<br><span id="speedLabel" style="font-weight:400;color:#6b7c73">השתמשו ב-WASD / חצים כדי ללכת</span></div>
+</div>
+
+<div id="searchWrap">
+  <input id="countrySearch" type="text" placeholder="🔍 חיפוש מדינה…" autocomplete="off">
+  <div id="searchResults"></div>
+</div>
+
+<div id="countryModal">
+  <div id="countryModalCard">
+    <button id="countryModalClose" aria-label="סגירה">✕</button>
+    <img id="countryModalFlag" alt="">
+    <h2 id="countryModalName"></h2>
+    <div id="countryModalMeta"></div>
+  </div>
+</div>
+
+<div id="flyOverlay"><div id="flyText">✈️ טסים אל <span id="flyDest"></span>…</div></div>
+
+<button id="charBtn" title="בחרו דמות">🧑</button>
+<div id="charPicker"></div>
+
+<div id="joystick"><div id="stick"></div></div>
+<div id="hint">גררו את הג'ויסטיק כדי ללכת<br>נגררו במסך כדי לסובב מבט</div>
+
+<div id="minimapWrap"><canvas id="minimapCanvas" width="300" height="150"></canvas></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="game-countries-data.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Scene setup ----------
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x8fd0ff); // bright blue, not black
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.05, 4000);
+
+  // ---------- Planet ----------
+  const PLANET_RADIUS = 220; // "giant walking on a globe" scale
+  const planetGroup = new THREE.Group();
+  scene.add(planetGroup);
+
+  const TEX_BASE = 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/';
+  const texLoader = new THREE.TextureLoader();
+  const earthMap = texLoader.load(TEX_BASE + 'earth_atmos_2048.jpg');
+  earthMap.colorSpace = THREE.SRGBColorSpace;
+
+  const planetGeo = new THREE.SphereGeometry(PLANET_RADIUS, 128, 128);
+  const planetMat = new THREE.MeshLambertMaterial({
+    map: earthMap
+  });
+  const planetMesh = new THREE.Mesh(planetGeo, planetMat);
+  planetGroup.add(planetMesh);
+
+  // thin cloud layer for realism
+  const cloudGeo = new THREE.SphereGeometry(PLANET_RADIUS * 1.008, 96, 96);
+  const cloudMap = texLoader.load(TEX_BASE + 'earth_clouds_1024.png');
+  const cloudMat = new THREE.MeshLambertMaterial({ map: cloudMap, transparent: true, opacity: 0.55, depthWrite: false });
+  const cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+  planetGroup.add(cloudMesh);
+
+  // land/sea lookup sampled from the actual Earth texture (equirectangular),
+  // so spawn points and future gameplay land on real continents. The same decoded
+  // image is reused to draw the 2D minimap, so it's only fetched/decoded once.
+  let landSampler = null; // (dir: normalized Vector3) => boolean
+  let earthMapImage = null; // the raw <img> once loaded, for the minimap
+  (function buildLandSampler(){
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      earthMapImage = img;
+      const cnv = document.createElement('canvas');
+      cnv.width = 512; cnv.height = 256;
+      const ctx = cnv.getContext('2d');
+      ctx.drawImage(img, 0, 0, cnv.width, cnv.height);
+      const data = ctx.getImageData(0, 0, cnv.width, cnv.height).data;
+      landSampler = (dir) => {
+        // equirectangular UV from a direction vector — must match THREE's actual SphereGeometry
+        // UV formula (x = -cos(phi)*sin(theta), y = cos(theta), z = sin(phi)*sin(theta)),
+        // i.e. phi = atan2(z, -x), theta = acos(y).
+        let u = Math.atan2(dir.z, -dir.x) / (2 * Math.PI);
+        if (u < 0) u += 1;
+        const v = Math.acos(Math.max(-1, Math.min(1, dir.y))) / Math.PI;
+        const px = Math.min(cnv.width - 1, Math.floor(u * cnv.width));
+        const py = Math.min(cnv.height - 1, Math.floor(v * cnv.height));
+        const i = (py * cnv.width + px) * 4;
+        const r = data[i], g = data[i+1], b = data[i+2];
+        // ocean pixels in this texture are blue-dominant and darker; land is greener/brown/white
+        const isBlueDominant = b > r + 12 && b > g + 4;
+        // ice caps read as near-white in this texture — exclude them from spawnable "land"
+        const isIce = r > 200 && g > 200 && b > 200;
+        return !isBlueDominant && !isIce;
+      };
+      if (typeof pickLandSpawn === 'function') pickLandSpawn();
+      if (typeof drawMinimapBase === 'function') drawMinimapBase();
+    };
+    img.src = TEX_BASE + 'earth_atmos_2048.jpg';
+  })();
+  function isLandDir(v){ return landSampler ? landSampler(v) : true; }
+
+  // stricter check for spawning: candidate plus a ring of nearby points must all be land,
+  // so the character lands well inside a continent rather than right on a coastline
+  function isDeepLandDir(v){
+    if (!isLandDir(v)) return false;
+    const arbitrary = Math.abs(v.y) < 0.99 ? new THREE.Vector3(0,1,0) : new THREE.Vector3(1,0,0);
+    const tangentA = new THREE.Vector3().crossVectors(arbitrary, v).normalize();
+    const tangentB = new THREE.Vector3().crossVectors(v, tangentA).normalize();
+    const ringDist = 0.05; // radians-ish offset on the unit sphere
+    for (let i = 0; i < 8; i++) {
+      const ang = (i / 8) * Math.PI * 2;
+      const offset = tangentA.clone().multiplyScalar(Math.cos(ang) * ringDist)
+        .add(tangentB.clone().multiplyScalar(Math.sin(ang) * ringDist));
+      const sample = v.clone().add(offset).normalize();
+      if (!isLandDir(sample)) return false;
+    }
+    return true;
+  }
+
+  // atmosphere glow (soft, bright — not a black-space look)
+  const atmoGeo = new THREE.SphereGeometry(PLANET_RADIUS * 1.03, 64, 64);
+  const atmoMat = new THREE.MeshBasicMaterial({
+    color: 0xbfe4ff, transparent: true, opacity: 0.25, side: THREE.BackSide
+  });
+  planetGroup.add(new THREE.Mesh(atmoGeo, atmoMat));
+
+  // ---------- Countries: borders + flag markers ----------
+  // lon/lat (degrees) -> direction vector, matching the sphere's equirectangular UV mapping
+  // (u = 0.5 + atan2(z,x)/2π, v = 0.5 - asin(y)/π) so borders/flags line up with the map texture.
+  function lonLatToDir(lon, lat){
+    // standard equirectangular UV: u = 0.5 + lon/360 (east positive), v = 0.5 - lat/180 (north = v=0)
+    const u = 0.5 + lon / 360;
+    const v = 0.5 - lat / 180;
+    const theta = v * Math.PI;   // polar angle from +Y (north pole)
+    const phi = u * 2 * Math.PI;
+    // inverse of THREE's SphereGeometry UV mapping: x = -cos(phi)*sin(theta), y = cos(theta), z = sin(phi)*sin(theta)
+    const x = -Math.cos(phi) * Math.sin(theta);
+    const y = Math.cos(theta);
+    const z = Math.sin(phi) * Math.sin(theta);
+    return new THREE.Vector3(x, y, z).normalize();
+  }
+
+  const COUNTRIES = window.GAME_COUNTRIES || [];
+  const BORDER_ALT = PLANET_RADIUS * 1.003; // slightly above surface to avoid z-fighting
+  const FLAG_ALT = PLANET_RADIUS * 1.001;
+
+  // -- borders, drawn as line loops per ring --
+  (function buildBorders(){
+    const positions = [];
+    for (const c of COUNTRIES) {
+      for (const ring of c.rings) {
+        if (ring.length < 3) continue;
+        for (let i = 0; i < ring.length; i++) {
+          const a = ring[i];
+          const b = ring[(i + 1) % ring.length];
+          const da = lonLatToDir(a[0], a[1]).multiplyScalar(BORDER_ALT);
+          const db = lonLatToDir(b[0], b[1]).multiplyScalar(BORDER_ALT);
+          positions.push(da.x, da.y, da.z, db.x, db.y, db.z);
+        }
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    const mat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 });
+    const lines = new THREE.LineSegments(geo, mat);
+    planetGroup.add(lines);
+  })();
+
+  // -- flag markers: billboarded flag image + name label, planted vertically at each country centroid --
+  const flagMarkers = []; // { country, group, dir }
+  const flagRaycastTargets = [];
+  function buildFlagMarker(country){
+    const dir = lonLatToDir(country.centroid[0], country.centroid[1]);
+    const group = new THREE.Group();
+    const basePos = dir.clone().multiplyScalar(FLAG_ALT);
+    group.position.copy(basePos);
+    // orient the whole marker so its local +Y points away from the planet (i.e. "up" at that spot)
+    group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+
+    const poleHeight = 3.6;
+    const poleGeo = new THREE.CylinderGeometry(0.045, 0.045, poleHeight, 6);
+    const poleMat = new THREE.MeshBasicMaterial({ color: 0xcccccc });
+    const pole = new THREE.Mesh(poleGeo, poleMat);
+    pole.position.y = poleHeight / 2;
+    group.add(pole);
+
+    // flag image as a billboard sprite near the top of the pole
+    const flagUrl = `https://flagcdn.com/w160/${country.cca2}.png`;
+    const flagTex = texLoader.load(flagUrl);
+    flagTex.colorSpace = THREE.SRGBColorSpace;
+    const flagMat = new THREE.SpriteMaterial({ map: flagTex, transparent: true });
+    const flagSprite = new THREE.Sprite(flagMat);
+    flagSprite.scale.set(1.8, 1.2, 1);
+    flagSprite.position.y = poleHeight + 0.6;
+    flagSprite.userData.country = country;
+    group.add(flagSprite);
+
+    // name label below the flag — fixed pixel height, width follows text aspect so it never balloons
+    const labelTex = buildLabelTexture(country.nameHe || country.name);
+    const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true });
+    const labelSprite = new THREE.Sprite(labelMat);
+    const labelAspect = labelTex.image.width / labelTex.image.height;
+    const LABEL_HEIGHT = 1.15;
+    labelSprite.scale.set(LABEL_HEIGHT * labelAspect, LABEL_HEIGHT, 1);
+    labelSprite.position.y = poleHeight - 0.35;
+    labelSprite.userData.country = country;
+    group.add(labelSprite);
+
+    planetGroup.add(group);
+    flagRaycastTargets.push(flagSprite, labelSprite);
+    flagMarkers.push({ country, group, dir, flagMat, labelMat });
+  }
+
+  function buildLabelTexture(text){
+    const cnv = document.createElement('canvas');
+    const ctx = cnv.getContext('2d');
+    ctx.font = 'bold 40px sans-serif';
+    const textWidth = ctx.measureText(text).width;
+    cnv.width = Math.ceil(textWidth) + 40;
+    cnv.height = 64;
+    const ctx2 = cnv.getContext('2d');
+    ctx2.font = 'bold 40px sans-serif';
+    ctx2.textAlign = 'center';
+    ctx2.textBaseline = 'middle';
+    ctx2.fillStyle = 'rgba(18,33,26,.82)';
+    roundRect(ctx2, 2, 2, cnv.width - 4, cnv.height - 4, 14);
+    ctx2.fill();
+    ctx2.fillStyle = '#ffffff';
+    ctx2.fillText(text, cnv.width / 2, cnv.height / 2 + 2);
+    const tex = new THREE.CanvasTexture(cnv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+  function roundRect(ctx, x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  COUNTRIES.forEach(buildFlagMarker);
+
+  // -- click/tap a flag or label to open the country info modal --
+  const raycaster = new THREE.Raycaster();
+  const pointerNDC = new THREE.Vector2();
+  function handlePointerSelect(clientX, clientY){
+    if (flight) return; // no interaction mid-flight
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointerNDC, camera);
+    const hits = raycaster.intersectObjects(flagRaycastTargets, false);
+    if (hits.length) {
+      const country = hits[0].object.userData.country;
+      if (country) openCountryModal(country);
+    }
+  }
+
+  const REGION_HE = {
+    'Asia': 'אסיה', 'Europe': 'אירופה', 'Africa': 'אפריקה',
+    'Antarctic': 'אנטארקטיקה', 'Americas': 'אמריקה', 'Oceania': 'אוקיאניה',
+    'Southern Europe': 'דרום אירופה', 'Northern Europe': 'צפון אירופה',
+    'Australia and New Zealand': 'אוסטרליה וניו זילנד', 'Southern Africa': 'דרום אפריקה',
+    'Southern Asia': 'דרום אסיה', 'Central Asia': 'מרכז אסיה', 'North America': 'צפון אמריקה',
+    'Caribbean': 'הקריביים', 'Eastern Africa': 'מזרח אפריקה', 'Central America': 'מרכז אמריקה',
+    'Central Europe': 'מרכז אירופה', 'Eastern Asia': 'מזרח אסיה', 'Eastern Europe': 'מזרח אירופה',
+    'Southeast Europe': 'דרום-מזרח אירופה', 'Northern Africa': 'צפון אפריקה',
+    'Western Europe': 'מערב אירופה', 'Middle Africa': 'מרכז אפריקה',
+    'South-Eastern Asia': 'דרום-מזרח אסיה', 'Western Africa': 'מערב אפריקה',
+    'Western Asia': 'מערב אסיה', 'South America': 'דרום אמריקה', 'Melanesia': 'מלנזיה'
+  };
+  function regionHe(s){ return REGION_HE[s] || s; }
+
+  const countryModal = document.getElementById('countryModal');
+  const countryModalFlag = document.getElementById('countryModalFlag');
+  const countryModalName = document.getElementById('countryModalName');
+  const countryModalMeta = document.getElementById('countryModalMeta');
+  function openCountryModal(country){
+    countryModalFlag.src = `https://flagcdn.com/w320/${country.cca2}.png`;
+    countryModalFlag.alt = country.nameHe || country.name;
+    countryModalName.textContent = country.nameHe || country.name;
+    const areaText = country.area ? Math.round(country.area).toLocaleString('he-IL') + ' קמ"ר' : '—';
+    const popText = country.population ? country.population.toLocaleString('he-IL') : '—';
+    countryModalMeta.innerHTML =
+      `<div><b>בירה:</b> ${country.capital || '—'}</div>` +
+      `<div><b>אזור:</b> ${regionHe(country.region)}${country.subregion ? ' · ' + regionHe(country.subregion) : ''}</div>` +
+      `<div><b>אוכלוסייה:</b> ${popText}</div>` +
+      `<div><b>שטח:</b> ${areaText}</div>`;
+    countryModal.classList.add('show');
+  }
+  document.getElementById('countryModalClose').onclick = () => countryModal.classList.remove('show');
+  countryModal.addEventListener('click', (e) => { if (e.target === countryModal) countryModal.classList.remove('show'); });
+
+  // ---------- Stars (bright bg, soft stars) ----------
+  (function addStars(){
+    const starCount = 1200;
+    const positions = new Float32Array(starCount * 3);
+    const radius = 1800;
+    for (let i = 0; i < starCount; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const r = radius * (0.85 + Math.random() * 0.15);
+      positions[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+      positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+      positions[i*3+2] = r * Math.cos(phi);
+    }
+    const starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 3.2, sizeAttenuation: true, transparent: true, opacity: 0.85 });
+    scene.add(new THREE.Points(starGeo, starMat));
+  })();
+
+  // ---------- Lighting ----------
+  // Keep the whole globe bright and readable (this is a cheerful walking game,
+  // not a realistic day/night simulation) — strong ambient/hemi fill so the far
+  // side of the planet never goes dark.
+  const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+  sun.position.set(500, 300, 200);
+  scene.add(sun);
+  scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+  scene.add(new THREE.HemisphereLight(0xbfe4ff, 0x2f8fd6, 0.5));
+
+  // ---------- Character ----------
+  const CHAR_OPTIONS = ['🧑','👩','🧔','👧','🧑‍🦱','🧕','🧑‍🦳','🤠'];
+  let charEmoji = localStorage.getItem('globeGameChar') || '🧑';
+
+  const charGroup = new THREE.Group();
+  scene.add(charGroup);
+
+  const CHAR_HEIGHT = 5.2; // "giant" relative to the globe
+  let charSprite;
+  function buildCharSprite(emoji){
+    const size = 128;
+    const cnv = document.createElement('canvas');
+    cnv.width = size; cnv.height = size;
+    const ctx = cnv.getContext('2d');
+    ctx.font = (size*0.72) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, size/2, size/2 + 6);
+    const tex = new THREE.CanvasTexture(cnv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const sprite = new THREE.Sprite(mat);
+    const headSize = CHAR_HEIGHT * 0.42;
+    sprite.scale.set(headSize, headSize, 1);
+    sprite.position.y = HEAD_Y_BASE;
+    return sprite;
+  }
+  // simple body so the character isn't a floating head
+  const BODY_HALF_H = CHAR_HEIGHT * 0.17;
+  const BODY_RADIUS = CHAR_HEIGHT * 0.14;
+  const BODY_Y_BASE = BODY_RADIUS + BODY_HALF_H;
+  const HEAD_Y_BASE = BODY_Y_BASE * 2 + CHAR_HEIGHT * 0.42 * 0.3;
+  const bodyGeo = new THREE.CapsuleGeometry(BODY_RADIUS, BODY_HALF_H * 2, 4, 8);
+  let bodyColorIdx = 0;
+  const BODY_COLORS = [0x3a7bd5, 0xe0335f, 0xf5a623, 0x9b59b6, 0x2ecc71, 0xe67e22, 0x1abc9c, 0xd35400];
+  const bodyMat = new THREE.MeshStandardMaterial({ color: BODY_COLORS[0], roughness: 0.7 });
+  const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+  bodyMesh.position.y = BODY_Y_BASE;
+  charGroup.add(bodyMesh);
+
+  function setCharacter(emoji){
+    charEmoji = emoji;
+    localStorage.setItem('globeGameChar', emoji);
+    if (charSprite) charGroup.remove(charSprite);
+    charSprite = buildCharSprite(emoji);
+    charGroup.add(charSprite);
+    bodyColorIdx = CHAR_OPTIONS.indexOf(emoji);
+    if (bodyColorIdx < 0) bodyColorIdx = 0;
+    bodyMat.color.set(BODY_COLORS[bodyColorIdx % BODY_COLORS.length]);
+  }
+  setCharacter(charEmoji);
+
+  // soft shadow blob under the character
+  const shadowGeo = new THREE.CircleGeometry(1.6, 24);
+  const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18 });
+  const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+  shadowMesh.rotation.x = -Math.PI / 2;
+  shadowMesh.position.y = 0.05;
+  charGroup.add(shadowMesh);
+
+  // ---------- Movement model ----------
+  // Character position is represented as a point on the unit sphere (lat/lon-free: a direction vector)
+  // plus a forward heading tangent to the sphere. Walking rotates this direction around an axis.
+  let posDir = new THREE.Vector3(0, 1, 0); // start at "north pole" of local model space
+  let forward = new THREE.Vector3(1, 0, 0); // tangent direction, perpendicular to posDir
+
+  // find a random land spawn point, well inside a continent (avoids coastlines/tiny islands)
+  function pickLandSpawn(){
+    let fallback = null;
+    for (let i = 0; i < 800; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      // bias toward mid-latitudes (avoid poles/ice caps): y in roughly [-0.75, 0.75]
+      const y = (Math.random() * 2 - 1) * 0.75;
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      const candidate = new THREE.Vector3(r * Math.cos(theta), y, r * Math.sin(theta));
+      if (isDeepLandDir(candidate)) { posDir = candidate; orthonormalizeForward(); updateCharTransform(); return; }
+      if (!fallback && isLandDir(candidate)) fallback = candidate;
+    }
+    if (fallback) { posDir = fallback; orthonormalizeForward(); updateCharTransform(); }
+  }
+
+  function orthonormalizeForward(){
+    // project forward onto tangent plane of posDir and normalize
+    const proj = forward.clone().sub(posDir.clone().multiplyScalar(forward.dot(posDir)));
+    if (proj.lengthSq() < 1e-6) {
+      // pick any tangent vector
+      const arbitrary = Math.abs(posDir.y) < 0.99 ? new THREE.Vector3(0,1,0) : new THREE.Vector3(1,0,0);
+      proj.copy(arbitrary.cross(posDir).normalize());
+    } else {
+      proj.normalize();
+    }
+    forward.copy(proj);
+  }
+  orthonormalizeForward();
+
+  function updateCharTransform(){
+    const worldPos = posDir.clone().multiplyScalar(PLANET_RADIUS + CHAR_HEIGHT * 0.02);
+    charGroup.position.copy(worldPos);
+    // orient character: "up" = posDir (away from planet center), "forward" = forward vector
+    const right = new THREE.Vector3().crossVectors(forward, posDir).normalize();
+    const m = new THREE.Matrix4();
+    m.makeBasis(right, posDir, forward.clone().negate());
+    charGroup.quaternion.setFromRotationMatrix(m);
+  }
+  updateCharTransform();
+
+  // ---------- Input ----------
+  const keys = {};
+  window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+  window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+  // joystick
+  const joystickEl = document.getElementById('joystick');
+  const stickEl = document.getElementById('stick');
+  let joyActive = false, joyVec = {x:0, y:0}, joyTouchId = null;
+  const JOY_MAX = 40;
+
+  function joyStart(x, y, id){
+    joyActive = true; joyTouchId = id;
+  }
+  function joyMove(clientX, clientY){
+    if (!joyActive) return;
+    const rect = joystickEl.getBoundingClientRect();
+    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+    let dx = clientX - cx, dy = clientY - cy;
+    const dist = Math.min(Math.hypot(dx, dy), JOY_MAX);
+    const ang = Math.atan2(dy, dx);
+    dx = Math.cos(ang) * dist; dy = Math.sin(ang) * dist;
+    stickEl.style.transform = `translate(${dx}px, ${dy}px)`;
+    joyVec.x = dx / JOY_MAX; joyVec.y = dy / JOY_MAX;
+  }
+  function joyEnd(){
+    joyActive = false; joyTouchId = null;
+    joyVec.x = 0; joyVec.y = 0;
+    stickEl.style.transform = 'translate(0,0)';
+  }
+  joystickEl.addEventListener('touchstart', e => {
+    const t = e.changedTouches[0];
+    joyStart(t.clientX, t.clientY, t.identifier);
+    joyMove(t.clientX, t.clientY);
+    e.preventDefault();
+  }, {passive:false});
+  joystickEl.addEventListener('touchmove', e => {
+    for (const t of e.changedTouches) if (t.identifier === joyTouchId) joyMove(t.clientX, t.clientY);
+    e.preventDefault();
+  }, {passive:false});
+  joystickEl.addEventListener('touchend', e => { joyEnd(); e.preventDefault(); }, {passive:false});
+  joystickEl.addEventListener('mousedown', e => { joyStart(e.clientX, e.clientY, 'mouse'); joyMove(e.clientX, e.clientY); });
+  window.addEventListener('mousemove', e => { if (joyTouchId === 'mouse') joyMove(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', () => { if (joyTouchId === 'mouse') joyEnd(); });
+
+  // camera look-around drag (on the canvas, avoiding joystick area)
+  let camYaw = 0, camPitch = 0.18; // relative to behind-character
+  let dragging = false, dragId = null, lastX = 0, lastY = 0, dragDist = 0;
+  const TAP_MAX_DIST = 8; // px — below this, treat a press+release as a tap (select a flag)
+  function isOverJoystick(x, y){
+    const rect = joystickEl.getBoundingClientRect();
+    return x >= rect.left-20 && x <= rect.right+20 && y >= rect.top-20 && y <= rect.bottom+20;
+  }
+  renderer.domElement.addEventListener('touchstart', e => {
+    const t = e.changedTouches[0];
+    if (isOverJoystick(t.clientX, t.clientY)) return;
+    dragging = true; dragId = t.identifier; lastX = t.clientX; lastY = t.clientY; dragDist = 0;
+  }, {passive:true});
+  renderer.domElement.addEventListener('touchmove', e => {
+    for (const t of e.changedTouches) {
+      if (t.identifier !== dragId) continue;
+      const dx = t.clientX - lastX, dy = t.clientY - lastY;
+      lastX = t.clientX; lastY = t.clientY;
+      dragDist += Math.hypot(dx, dy);
+      camYaw -= dx * 0.005;
+      camPitch = Math.max(-0.5, Math.min(0.7, camPitch - dy * 0.004));
+    }
+  }, {passive:true});
+  renderer.domElement.addEventListener('touchend', e => {
+    const t = e.changedTouches[0];
+    if (t && t.identifier === dragId) {
+      dragging = false;
+      if (dragDist < TAP_MAX_DIST) handlePointerSelect(t.clientX, t.clientY);
+    }
+  });
+  renderer.domElement.addEventListener('mousedown', e => {
+    if (isOverJoystick(e.clientX, e.clientY)) return;
+    dragging = true; lastX = e.clientX; lastY = e.clientY; dragDist = 0;
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging || joyTouchId === 'mouse') return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    dragDist += Math.hypot(dx, dy);
+    camYaw -= dx * 0.005;
+    camPitch = Math.max(-0.5, Math.min(0.7, camPitch - dy * 0.004));
+  });
+  window.addEventListener('mouseup', e => {
+    if (dragging && joyTouchId !== 'mouse' && dragDist < TAP_MAX_DIST) handlePointerSelect(e.clientX, e.clientY);
+    dragging = false;
+  });
+
+  // ---------- Character picker ----------
+  const charBtn = document.getElementById('charBtn');
+  const charPicker = document.getElementById('charPicker');
+  charBtn.textContent = charEmoji;
+  CHAR_OPTIONS.forEach(em => {
+    const b = document.createElement('button');
+    b.textContent = em;
+    if (em === charEmoji) b.classList.add('active');
+    b.onclick = () => {
+      setCharacter(em);
+      charBtn.textContent = em;
+      [...charPicker.children].forEach(c => c.classList.remove('active'));
+      b.classList.add('active');
+      charPicker.classList.remove('show');
+    };
+    charPicker.appendChild(b);
+  });
+  charBtn.onclick = () => charPicker.classList.toggle('show');
+
+  // ---------- Animation loop ----------
+  const WALK_SPEED = 0.00085; // radians per ms-equivalent, scaled by dt
+  const TURN_SPEED = 2.0; // radians/sec from keyboard A/D or joystick x
+  let walkCycle = 0;
+  const speedLabel = document.getElementById('speedLabel');
+  let clock = new THREE.Clock();
+
+  function getMoveInput(){
+    let fwd = 0, turn = 0;
+    if (keys['w'] || keys['arrowup']) fwd += 1;
+    if (keys['s'] || keys['arrowdown']) fwd -= 1;
+    if (keys['a'] || keys['arrowleft']) turn -= 1;
+    if (keys['d'] || keys['arrowright']) turn += 1;
+    if (joyActive) {
+      fwd += -joyVec.y;
+      turn += joyVec.x;
+    }
+    fwd = Math.max(-1, Math.min(1, fwd));
+    turn = Math.max(-1, Math.min(1, turn));
+    return { fwd, turn };
+  }
+
+  // ---------- Search fly-to: whisks the character at speed to a chosen country, no interrupt ----------
+  const flyOverlay = document.getElementById('flyOverlay');
+  const flyDestEl = document.getElementById('flyDest');
+  let flight = null; // { fromDir, toDir, angle, t, duration }
+  function startFlyTo(country){
+    if (flight) return;
+    const toDir = lonLatToDir(country.centroid[0], country.centroid[1]);
+    const fromDir = posDir.clone();
+    const angle = fromDir.angleTo(toDir);
+    if (angle < 1e-4) return; // already there
+    flyDestEl.textContent = country.nameHe || country.name;
+    flyOverlay.classList.add('show');
+    countryModal.classList.remove('show');
+    document.getElementById('searchResults').classList.remove('show');
+    document.getElementById('countrySearch').blur();
+    flight = {
+      fromDir, toDir, angle,
+      axis: new THREE.Vector3().crossVectors(fromDir, toDir).normalize(),
+      t: 0,
+      duration: Math.max(1.1, Math.min(3.2, angle * 0.9)) // seconds — fast, capped so long trips aren't endless
+    };
+  }
+  function updateFlight(dt){
+    flight.t += dt / flight.duration;
+    const p = Math.min(1, flight.t);
+    const eased = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p+2, 2)/2; // ease-in-out, no abrupt stop
+    const angleNow = flight.angle * eased;
+    posDir = flight.fromDir.clone().applyAxisAngle(flight.axis, angleNow).normalize();
+    orthonormalizeForward();
+    updateCharTransform();
+    if (p >= 1) {
+      flight = null;
+      flyOverlay.classList.remove('show');
+    }
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+
+    if (flight) {
+      updateFlight(dt);
+      renderCameraAndScene(dt);
+      return;
+    }
+
+    const { fwd, turn } = getMoveInput();
+
+    if (turn !== 0) {
+      const turnAngle = turn * TURN_SPEED * dt;
+      forward.applyAxisAngle(posDir, -turnAngle);
+      orthonormalizeForward();
+    }
+
+    if (fwd !== 0) {
+      const moveAngle = fwd * WALK_SPEED * dt * 1000;
+      const axis = new THREE.Vector3().crossVectors(posDir, forward).normalize();
+      // rotate posDir around axis (perpendicular to both posDir and forward) by moveAngle
+      const rotAxis = new THREE.Vector3().crossVectors(forward, posDir).normalize();
+      posDir.applyAxisAngle(rotAxis, moveAngle);
+      forward.applyAxisAngle(rotAxis, moveAngle);
+      posDir.normalize();
+      orthonormalizeForward();
+      walkCycle += dt * 10;
+    }
+
+    updateCharTransform();
+
+    // bob while walking
+    const bob = fwd !== 0 ? Math.abs(Math.sin(walkCycle)) * 0.35 : 0;
+    if (charSprite) {
+      charSprite.position.y = HEAD_Y_BASE + bob;
+      bodyMesh.position.y = BODY_Y_BASE + bob * 0.5;
+    }
+
+    renderCameraAndScene(dt);
+  }
+
+  // ---------- Camera: eye-level-ish, showing horizon curvature ----------
+  // Camera orbits behind+above the character in the tangent frame, always upright relative to posDir.
+  function renderCameraAndScene(dt){
+    const baseBack = forward.clone().negate();
+
+    const yawQuat = new THREE.Quaternion().setFromAxisAngle(posDir, camYaw);
+    const backDir = baseBack.clone().applyQuaternion(yawQuat);
+    const rightForPitch = new THREE.Vector3().crossVectors(posDir, backDir).normalize();
+    const pitchQuat = new THREE.Quaternion().setFromAxisAngle(rightForPitch, camPitch);
+    const camDir = backDir.clone().applyQuaternion(pitchQuat);
+
+    const camDist = 13;
+    const camHeight = 6.5;
+    const charWorldPos = posDir.clone().multiplyScalar(PLANET_RADIUS + CHAR_HEIGHT * 0.02);
+    const camPos = charWorldPos.clone()
+      .add(camDir.clone().multiplyScalar(camDist))
+      .add(posDir.clone().multiplyScalar(camHeight));
+
+    camera.position.copy(camPos);
+    const lookTarget = charWorldPos.clone().add(posDir.clone().multiplyScalar(CHAR_HEIGHT * 0.6));
+    camera.up.copy(posDir);
+    camera.lookAt(lookTarget);
+
+    cloudMesh.rotation.y += dt * 0.006;
+
+    updateFlagVisibility();
+    updateMinimap();
+
+    renderer.render(scene, camera);
+  }
+
+  // ---------- 2D minimap: flat world map with a yellow cross at the current position ----------
+  const minimapCanvas = document.getElementById('minimapCanvas');
+  const minimapCtx = minimapCanvas.getContext('2d');
+  let minimapBase = null; // offscreen canvas holding the drawn-once base map
+  function drawMinimapBase(){
+    if (!earthMapImage) return;
+    const buf = document.createElement('canvas');
+    buf.width = minimapCanvas.width;
+    buf.height = minimapCanvas.height;
+    const bctx = buf.getContext('2d');
+    bctx.drawImage(earthMapImage, 0, 0, buf.width, buf.height);
+    minimapBase = buf;
+  }
+  // dir -> [lon, lat] degrees, inverse of lonLatToDir/the UV formula used everywhere else
+  function dirToLonLat(dir){
+    let u = Math.atan2(dir.z, -dir.x) / (2 * Math.PI);
+    if (u < 0) u += 1;
+    const v = Math.acos(Math.max(-1, Math.min(1, dir.y))) / Math.PI;
+    const lon = (u - 0.5) * 360;
+    const lat = (0.5 - v) * 180;
+    return [lon, lat];
+  }
+  function updateMinimap(){
+    if (!minimapBase) return;
+    minimapCtx.drawImage(minimapBase, 0, 0);
+    const [lon, lat] = dirToLonLat(posDir);
+    const px = ((lon + 180) / 360) * minimapCanvas.width;
+    const py = ((90 - lat) / 180) * minimapCanvas.height;
+    const s = 6;
+    minimapCtx.lineCap = 'round';
+    // dark outline first so the cross stays visible over bright ocean/cloud areas, then yellow on top
+    minimapCtx.strokeStyle = 'rgba(0,0,0,.4)';
+    minimapCtx.lineWidth = 4.5;
+    minimapCtx.beginPath();
+    minimapCtx.moveTo(px - s, py); minimapCtx.lineTo(px + s, py);
+    minimapCtx.moveTo(px, py - s); minimapCtx.lineTo(px, py + s);
+    minimapCtx.stroke();
+    minimapCtx.strokeStyle = '#ffe100';
+    minimapCtx.lineWidth = 2.5;
+    minimapCtx.beginPath();
+    minimapCtx.moveTo(px - s, py); minimapCtx.lineTo(px + s, py);
+    minimapCtx.moveTo(px, py - s); minimapCtx.lineTo(px, py + s);
+    minimapCtx.stroke();
+  }
+
+  // fade out flags/labels that are far from the character, so nearby markers stay readable
+  // instead of the view getting cluttered with every country on the globe at once.
+  const FLAG_FADE_START = 0.35; // angular distance (radians) where fading begins
+  const FLAG_FADE_END = 0.55;   // fully invisible beyond this
+  function updateFlagVisibility(){
+    for (const m of flagMarkers) {
+      const ang = posDir.angleTo(m.dir);
+      let opacity;
+      if (ang <= FLAG_FADE_START) opacity = 1;
+      else if (ang >= FLAG_FADE_END) opacity = 0;
+      else opacity = 1 - (ang - FLAG_FADE_START) / (FLAG_FADE_END - FLAG_FADE_START);
+      m.flagMat.opacity = opacity;
+      m.labelMat.opacity = opacity;
+      m.group.visible = opacity > 0.01;
+    }
+  }
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // ---------- Country search ----------
+  const searchInput = document.getElementById('countrySearch');
+  const searchResults = document.getElementById('searchResults');
+  function countryDisplayName(c){ return c.nameHe || c.name; }
+  function countryMatches(c, q){
+    return (c.nameHe && c.nameHe.toLowerCase().includes(q)) || c.name.toLowerCase().includes(q);
+  }
+  function renderSearchResults(query){
+    const q = query.trim().toLowerCase();
+    if (!q) { searchResults.classList.remove('show'); searchResults.innerHTML = ''; return; }
+    const matches = COUNTRIES.filter(c => countryMatches(c, q)).slice(0, 8);
+    if (!matches.length) { searchResults.classList.remove('show'); searchResults.innerHTML = ''; return; }
+    searchResults.innerHTML = '';
+    matches.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'searchRow';
+      const img = document.createElement('img');
+      img.src = `https://flagcdn.com/w40/${c.cca2}.png`;
+      img.alt = '';
+      const span = document.createElement('span');
+      span.textContent = countryDisplayName(c);
+      row.appendChild(img);
+      row.appendChild(span);
+      row.onclick = () => {
+        searchInput.value = countryDisplayName(c);
+        searchResults.classList.remove('show');
+        startFlyTo(c);
+      };
+      searchResults.appendChild(row);
+    });
+    searchResults.classList.add('show');
+  }
+  searchInput.addEventListener('input', () => renderSearchResults(searchInput.value));
+  searchInput.addEventListener('focus', () => renderSearchResults(searchInput.value));
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const q = searchInput.value.trim().toLowerCase();
+      const match = COUNTRIES.find(c => countryDisplayName(c).toLowerCase() === q) ||
+        COUNTRIES.find(c => countryMatches(c, q));
+      if (match) { searchInput.value = countryDisplayName(match); searchResults.classList.remove('show'); startFlyTo(match); }
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!searchResults.contains(e.target) && e.target !== searchInput) searchResults.classList.remove('show');
+  });
+
+  document.getElementById('loading').style.display = 'none';
+  animate();
+})();
+</script>
+</body>
+</html>
