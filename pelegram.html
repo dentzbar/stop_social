@@ -576,6 +576,13 @@ function showWelcome(){
 
 function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer = null; } }
 
+// Polls are skipped while the tab is hidden (lets Neon's compute scale to zero); catch up on return.
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState!=='visible' || !pollTimer || !activeView) return;
+  if(activeView.type==='dm') renderDmThread(true);
+  else if(activeView.type==='channel') renderChannelChat(true);
+});
+
 function highlightActiveSidebarItem(){
   document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
   if(!activeView) return;
@@ -681,7 +688,7 @@ async function openDm(other){
   markDmRead(other.user_id);
   stopPolling();
   pollTimer = setInterval(()=>{
-    if(activeView && activeView.type==='dm') renderDmThread(true);
+    if(!document.hidden && activeView && activeView.type==='dm') renderDmThread(true);
   }, 5000);
 }
 
@@ -733,7 +740,7 @@ async function openChannel(g){
   await renderChannelChat();
   stopPolling();
   pollTimer = setInterval(()=>{
-    if(activeView && activeView.type==='channel') renderChannelChat(true);
+    if(!document.hidden && activeView && activeView.type==='channel') renderChannelChat(true);
   }, 5000);
 }
 

@@ -1151,8 +1151,13 @@ async function fetchUnreadCount(){
 function startUnreadPolling(){
   fetchUnreadCount();
   if(unreadPollTimer) clearInterval(unreadPollTimer);
-  unreadPollTimer = setInterval(fetchUnreadCount, 20000);
+  // skip polls while the tab is hidden so idle tabs let Neon's compute scale to zero
+  unreadPollTimer = setInterval(()=>{ if(!document.hidden) fetchUnreadCount(); }, 20000);
 }
+
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible' && unreadPollTimer) fetchUnreadCount();
+});
 
 async function fetchNotifications(){
   const user = currentUser();
