@@ -103,3 +103,15 @@ create index if not exists posts_group_idx on posts (group_id, created_at desc);
 
 -- migration: optional cover image for a group (shown instead of the emoji icon when set)
 alter table groups add column if not exists image_url text;
+
+-- migration: "climbing monkey" game leaderboard — one row per user with their best finish time
+create table if not exists monkey_climb_scores (
+  user_id integer primary key references users(id) on delete cascade,
+  best_time_ms integer not null,
+  best_difficulty text not null default 'normal',
+  wins integer not null default 0,
+  games integer not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists monkey_climb_scores_best_idx on monkey_climb_scores (best_time_ms);
